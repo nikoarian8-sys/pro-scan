@@ -59,6 +59,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .stk button.sel{outline:3px solid var(--yel)}.stk button.hit{box-shadow:inset 0 0 0 3px var(--mov)}.dim .stk button:not(.hit){opacity:.35}
 .door{position:absolute;right:16px;bottom:8px;font-size:13px;font-weight:700;color:var(--mute);border-top:3px solid var(--ink);width:110px;text-align:right;padding-top:4px}
 .scroll{overflow-x:auto}
+.planWrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--card);max-height:70vh;touch-action:pan-x pan-y}
+#plan{display:block;font-family:system-ui}#plan .s{cursor:pointer}#plan .s rect.b{fill:var(--bg);stroke:var(--ink);stroke-width:2}
+#plan .s.sel rect.b{stroke:var(--yel);stroke-width:6}#plan .s.hit rect.b{stroke:var(--mov);stroke-width:6}#plan.dim .s:not(.hit){opacity:.35}
+#plan rect.f{fill:var(--fill)}#plan text{fill:var(--ink);text-anchor:middle;pointer-events:none}
 #print{display:none}
 @media print{body>*:not(#print){display:none!important}#print{display:block;color:#000}
   #print .g{display:grid;grid-template-columns:1fr 1fr;gap:6mm}#print .l{display:flex;gap:4mm;align-items:center;border:1px solid #000;padding:4mm;break-inside:avoid}
@@ -87,7 +91,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
       <button type="button" id="photoBtn">Photo</button><input type="file" id="photo" accept="image/*" capture="environment" hidden>
     </div>
     <form class="scanbar" id="scanForm"><input id="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="PDA scanner / type code" aria-label="Barcode"><button>Read</button></form>
-    <div id="result"></div>
+    <div id="result"></div><datalist id="itemList"></datalist>
   </div>
   <div class="card"><div class="row" style="justify-content:space-between;align-items:center"><b>This session</b><button type="button" id="undo" disabled>Undo last</button></div><div id="recent" class="small">Nothing scanned yet.</div></div>
 </section>
@@ -95,6 +99,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 <section id="v-room" hidden>
   <div class="stats" id="stats"></div>
   <label style="margin-bottom:12px">Find product<input id="find" placeholder="e.g. short plate, FQ-19, neck bone"></label>
+  <div class="row" id="zoomBar" style="justify-content:flex-end;margin-bottom:6px" hidden><span class="small" style="margin-right:auto">Real layout from the sheet (Room + Locations tabs)</span><button type="button" data-z="-1" aria-label="Zoom out">−</button><button type="button" data-z="1" aria-label="Zoom in">+</button></div>
+  <div class="planWrap" id="planWrap" hidden><svg id="plan"></svg></div>
   <div class="room" id="room"></div>
   <div class="card" id="detail" style="margin-top:12px"><span class="small">Tap a stack to see what's inside.</span></div>
 </section>
@@ -130,13 +136,14 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 {
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ls={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}}};
+const ITEMS=()=>S.master.items||[];
 const DEF_LOCS=['A','B','C','E','F'].flatMap(p=>[1,2,3].map(n=>({code:p+n,pallet:p})));
 const S={cfg:ls.get('pro.cfg',{}),queue:ls.get('pro.queue',[]),pq:ls.get('pro.pq',[]),master:ls.get('pro.master',{products:[],lots:[],locations:[]}),server:ls.get('pro.moves',[]),
   lastSync:ls.get('pro.last',0),mode:'IN',session:[],sel:null,syncing:false,err:''};
 const LOCS=()=>(S.master.locations&&S.master.locations.length?S.master.locations:DEF_LOCS).map(l=>String(l.code));
 const prodMap=()=>{const m={};S.master.products.forEach(p=>m[String(p.gtin)]=p.name);return m};
 const lotMap=()=>{const m={};S.master.lots.forEach(l=>m[String(l.id)]=l);return m};
-const lotName=l=>l?`${l.brand} ${l.code} ${l.product}`:'Unknown batch';
+const lotName=l=>l?(l.sku_name||`${l.brand} ${l.code} ${l.product}`):'Unknown batch';
 const fmtKg=n=>(Math.round((n||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
 const toISO=d=>{d=String(d||'').trim();let m;if(m=d.match(/^(\d{4})-(\d{2})-(\d{2})/))return m[0];if(m=d.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/))return`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;return''};
 const fmtD=d=>{d=toISO(d);return d?new Date(d+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'–'};
@@ -161,7 +168,7 @@ function parseCode(raw){
   for(const k in f){const dec=+k[3];if(/^310\d$/.test(k))r.kg=+f[k]/10**dec;if(/^320\d$/.test(k)){r.lb=+f[k]/10**dec;r.kg=Math.round(r.lb*0.45359237*100)/100}}
   const dt=v=>v&&/^\d{6}$/.test(v)?`20${v.slice(0,2)}-${v.slice(2,4)}-${v.slice(4,6)==='00'?'28':v.slice(4,6)}`:'';
   r.prod=dt(f['11'])||dt(f['13']);r.exp=dt(f['17'])||dt(f['15']);
-  if(!r.gtin)r.type=r.sscc?'sscc':'unknown';
+  if(!r.gtin)r.type=r.sscc?'sscc':(r.prod||r.exp||r.lot||r.serial||Object.keys(f).some(k=>/^3[1-3]/.test(k)))?'frag':'unknown';
   return r;
 }
 const rank=t=>{const r=parseCode(t);return r.type==='gs1'?3:r.type==='lot'||r.type==='loc'||r.type==='cfg'?2:r.type==='sscc'?1:0};
@@ -177,7 +184,7 @@ function compute(){
     else{const n=+e.boxes||0;if(e.mode==='IN')addL(e.key,e.loc,n);else if(e.mode==='OUT')addL(e.key,e.loc,-n);else{addL(e.key,e.loc,-n);addL(e.key,e.to,n)}}}
   const st={};LOCS().forEach(l=>st[l]={boxes:0,kg:0,items:{}});
   const item=(loc,name,key)=>{const s=st[loc]||(st[loc]={boxes:0,kg:0,items:{}});return s.items[key]||(s.items[key]={name,boxes:0,kg:0,oldest:''})};
-  for(const b of boxes.values()){const it=item(b.loc,P[b.gtin]||b.gtin,b.gtin);it.boxes++;it.kg+=+b.kg||0;if(b.prod&&(!it.oldest||b.prod<it.oldest))it.oldest=b.prod;st[b.loc].boxes++;st[b.loc].kg+=+b.kg||0}
+  for(const b of boxes.values()){const it=item(b.loc,P[b.gtin]||('New code '+b.gtin),b.gtin);it.boxes++;it.kg+=+b.kg||0;if(b.prod&&(!it.oldest||b.prod<it.oldest))it.oldest=b.prod;st[b.loc].boxes++;st[b.loc].kg+=+b.kg||0}
   for(const[k,n]of lotq){if(n<=0)continue;const[id,loc]=k.split('|');const L=Lm[id];const it=item(loc,lotName(L),'L'+id);const kg=n*(+L?.kg_per_box||0);it.boxes+=n;it.kg+=kg;it.oldest=toISO(L?.prod_date);st[loc].boxes+=n;st[loc].kg+=kg}
   return{boxes,lotq,st};
 }
@@ -197,7 +204,7 @@ async function trySync(){
     }
     const g=await(await fetch(S.cfg.url+'?t='+encodeURIComponent(S.cfg.token))).json();
     if(!g.ok)throw new Error(g.error||'rejected');
-    S.master={products:g.products||[],lots:g.lots||[],locations:g.locations||[]};S.server=g.moves||[];
+    S.master={products:g.products||[],lots:g.lots||[],locations:g.locations||[],items:g.items||[],room:g.room||{}};S.server=g.moves||[];
     ls.set('pro.master',S.master);ls.set('pro.moves',S.server);S.lastSync=Date.now();ls.set('pro.last',S.lastSync);
     fillLocs();renderAll();
     if(S.queue.length)setTimeout(trySync,500);
@@ -230,6 +237,7 @@ function handle(raw){
       addMove({mode,kind:'lot',key:r.id,loc,to:mode==='MOVE'?to:'',boxes:n});
       show(`<div class="msg ok">Saved: ${mode} ${n} × ${esc(lotName(L))} ${mode==='MOVE'?esc(loc)+' → '+esc(to):'@ '+esc(loc)}</div>${mode!=='IN'&&n>have?`<div class="msg warn">Only ${have} recorded in ${esc(loc)}. Check the count.</div>`:''}`)};return}
   if(r.type==='sscc'){feedback(false);return show(`<div class="msg warn">That's the shipping code. Aim at the other, longer barcode.</div>`)}
+  if(r.type==='frag'){feedback(false);return show(`<div class="msg warn">This barcode has only part of the data (date/lot). Scan the barcode with the product code too, or photograph the whole label.</div>`)}
   if(r.type==='unknown'){feedback(false);return show(`<div class="msg err">Not a product barcode.<br><span class="small">${esc(raw)}</span></div>`)}
   const key=boxKey(r),cur=compute().boxes.get(key);let warn='',block='';
   if(mode==='IN'&&cur)block=`Already in stock at ${esc(cur.loc)}. Not saved twice.`;
@@ -240,17 +248,21 @@ function handle(raw){
   const card=`<div class="label"><h3>${name?esc(name):'New product code'}</h3><div class="kv">
     <div><span>Net weight</span><b>${r.kg!=null?fmtKg(r.kg)+' kg':'–'}</b></div><div><span>Pack / prod.</span><b>${fmtD(r.prod)}</b></div>
     <div><span>Expiry</span><b>${fmtD(r.exp)}</b></div><div><span>${r.serial?'Serial':'Lot'}</span><b>${esc(r.serial||r.lot||'–')}</b></div><div><span>GTIN</span><b style="font-size:14px">${esc(r.gtin)}</b></div></div>
-    ${name?'':`<form class="row" id="nameF" style="margin-top:10px"><label style="flex:1 1 160px">Name this product (once)<input id="pn" required placeholder="e.g. Chuck Roll US IBP (55215)"></label><button>Save name</button></form>`}</div>`;
+    ${name?'':`<form class="row" id="nameF" style="margin-top:10px"><label style="flex:1 1 200px">Which PRO product is this? (once)<input id="pn" list="itemList" required placeholder="type e.g. short plate, ECT, shin"></label><button>Save</button></form>`}</div>`;
   if(block){feedback(false);return show(card+`<div class="msg err">${block}</div>`)}
-  addMove({mode,kind:'box',key,loc:mode==='MOVE'?(cur?.loc||''):loc,to:mode==='MOVE'?to:'',gtin:r.gtin,kg:r.kg??null,prod:r.prod,exp:r.exp,serial:r.serial||'',lot:r.lot||''});feedback(true);
+  addMove({mode,kind:'box',key,loc:mode==='MOVE'?(cur?.loc||''):loc,to:mode==='MOVE'?to:'',gtin:r.gtin,kg:r.kg??null,prod:r.prod,exp:r.exp,serial:r.serial||'',lot:r.lot||'',raw:String(raw).replace(/\x1d/g,'|').slice(0,200)});feedback(true);
   show(card+`<div class="msg ok">Saved: ${mode} ${mode==='MOVE'?esc(cur?.loc||'?')+' → '+esc(to):'@ '+esc(loc)}</div>${warn?`<div class="msg warn">${warn}</div>`:''}`);
-  const nf=$('#nameF');if(nf)nf.onsubmit=e=>{e.preventDefault();const n=$('#pn').value.trim();if(!n)return;S.pq.push({gtin:r.gtin,name:n});ls.set('pro.pq',S.pq);S.master.products.push({gtin:r.gtin,name:n});ls.set('pro.master',S.master);nf.outerHTML=`<div class="msg ok">Named: ${esc(n)}</div>`;renderAll();trySync()};
+  const nf=$('#nameF');if(nf){fillItems();nf.onsubmit=e=>{e.preventDefault();const v=$('#pn').value.trim(),it=ITEMS().find(i=>i.name===v||i.sku===v||`${i.name} · ${i.sku}`===v);
+    if(!it){$('#pn').setCustomValidity('Pick a product from the list');$('#pn').reportValidity();return}
+    S.pq.push({gtin:r.gtin,sku:it.sku});ls.set('pro.pq',S.pq);S.master.products.push({gtin:r.gtin,sku:it.sku,name:it.name});ls.set('pro.master',S.master);nf.outerHTML=`<div class="msg ok">Linked to ${esc(it.sku)} · ${esc(it.name)}</div>`;renderAll();trySync()};
+    $('#pn').oninput=()=>$('#pn').setCustomValidity('')}
 }
 $('#scanForm').onsubmit=e=>{e.preventDefault();const v=$('#code').value;$('#code').value='';if(v.trim())handle(v)};
 $('#undo').onclick=()=>{const m=S.session[0];if(!m)return;const i=S.queue.findIndex(q=>q.id===m.id);
   if(i<0)return show('<div class="msg warn">Already synced to the sheet. Fix it there, or scan the opposite move.</div>');
   S.queue.splice(i,1);saveQ();S.session.shift();renderRecent();renderSync();renderAll();show('<div class="msg ok">Last scan undone.</div>')};
-function itemName(m){return m.kind==='lot'?lotName(lotMap()[m.key]):(prodMap()[m.gtin]||m.gtin)}
+let itemsFilled=0;function fillItems(){const I=ITEMS();if(itemsFilled===I.length)return;itemsFilled=I.length;$('#itemList').innerHTML=I.map(i=>`<option value="${esc(i.name)}">${esc(i.sku)}</option>`).join('')}
+function itemName(m){return m.kind==='lot'?lotName(lotMap()[m.key]):(prodMap()[m.gtin]||'New code '+m.gtin)}
 function renderRecent(){$('#undo').disabled=!S.session.length;const q=new Set(S.queue.map(m=>m.id));
   $('#recent').innerHTML=S.session.length?`<table>${S.session.slice(0,10).map(m=>`<tr><td><span class="tag t${m.mode}">${m.mode}</span></td><td>${esc(itemName(m))}</td><td class="n">${m.kind==='lot'?m.boxes+' bx':fmtKg(m.kg)+' kg'}</td><td class="n">${esc(m.mode==='MOVE'?m.loc+'→'+m.to:m.loc)}</td><td class="small">${q.has(m.id)?'waiting':'✓'}</td></tr>`).join('')}</table>`:'Nothing scanned yet.'}
 
@@ -260,7 +272,16 @@ const loadZX=()=>zx||(zx=fetch('zxing_reader.wasm').then(r=>{if(!r.ok)throw new 
   .then(buf=>window.ZXingWASM.prepareZXingModule({overrides:{wasmBinary:buf},fireImmediately:true})).then(()=>window.ZXingWASM).catch(e=>{zx=null;throw e}));
 const s=document.createElement('script');s.src='zxing-reader.js';s.onload=()=>loadZX().catch(()=>{});document.head.appendChild(s);
 const FORMATS=['Code128','DataMatrix','QRCode','EAN-13'];
-async function readAny(input,hard){const Z=await loadZX();const r=await Z.readBarcodes(input,{formats:FORMATS,tryHarder:hard,tryRotate:true,maxNumberOfSymbols:4});return r.map(x=>x.text).filter(Boolean).sort((a,b)=>rank(b)-rank(a))[0]}
+async function readAll(input){const Z=await loadZX();const r=await Z.readBarcodes(input,{formats:FORMATS,tryHarder:true,tryRotate:true,maxNumberOfSymbols:8});return r.map(x=>x.text).filter(Boolean)}
+/* merge GS1 data split over several barcodes on one label (e.g. some JBS labels) */
+function combine(texts){const P=texts.map(t=>[t,parseCode(t)]),main=P.find(x=>x[1].type==='gs1');
+  if(!main)return texts.sort((a,b)=>rank(b)-rank(a))[0];
+  const frags=P.filter(x=>x!==main&&(x[1].type==='frag'||(x[1].type==='gs1'&&x[1].gtin===main[1].gtin)));
+  if(!frags.length)return main[0];
+  const f={};frags.forEach(x=>Object.assign(f,x[1].f));Object.assign(f,main[1].f);
+  return Object.entries(f).map(([k,v])=>`(${k})${v}`).join('')}
+const complete=t=>{const r=parseCode(t);return r.type!=='gs1'||(r.prod||r.exp)&&(r.serial||r.lot)};
+async function readAny(input){return combine(await readAll(input))}
 
 /* live camera */
 const video=$('#video'),cvs=document.createElement('canvas'),ctx=cvs.getContext('2d',{willReadFrequently:true});
@@ -279,10 +300,12 @@ async function loop(){
   if(video.readyState>=2&&!awaitQty){
     const w=video.videoWidth,h=video.videoHeight;
     // read the aiming band (middle 30% of height, full width) for speed; full frame every 5th try
-    const full=(loop.n=(loop.n||0)+1)%5===0,y=full?0:Math.round(h*.3),hh=full?h:Math.round(h*.4);
+    const full=(loop.n=(loop.n||0)+1)%3===0,y=full?0:Math.round(h*.3),hh=full?h:Math.round(h*.4);
     cvs.width=w;cvs.height=hh;ctx.drawImage(video,0,y,w,hh,0,0,w,hh);
-    try{const t=await readAny(ctx.getImageData(0,0,w,hh),true);
-      if(t&&!(t===last&&Date.now()-lastT<4000)){last=t;lastT=Date.now();$('#cam').classList.add('hit');setTimeout(()=>$('#cam').classList.remove('hit'),400);handle(t)}}catch{}
+    try{let t=await readAny(ctx.getImageData(0,0,w,hh));
+      if(t&&!full&&!complete(t)){cvs.width=w;cvs.height=h;ctx.drawImage(video,0,0);t=combine([t,...await readAll(ctx.getImageData(0,0,w,h))])}
+      if(t&&rank(t)<2){$('#cam .tip').textContent=rank(t)===1?'That is the shipping code: aim at the product barcode':'Other barcode ('+t.slice(0,14)+'): aim at the long product barcode'}
+      else if(t&&!(t===last&&Date.now()-lastT<4000)){last=t;lastT=Date.now();$('#cam .tip').textContent='Fit the long barcode inside the box';$('#cam').classList.add('hit');setTimeout(()=>$('#cam').classList.remove('hit'),400);handle(t)}}catch{}
   }
   setTimeout(loop,80);
 }
@@ -291,7 +314,7 @@ $('#torch').onclick=async()=>{const tr=stream?.getVideoTracks()[0];if(!tr)return
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&camOn)stopCam()});
 $('#photoBtn').onclick=()=>$('#photo').click();
 $('#photo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;show('<div class="msg">Reading…</div>');
-  try{const t=await readAny(f,true);t?handle(t):show('<div class="msg err">No barcode found in the photo. Get closer and avoid glare.</div>')}catch{show('<div class="msg err">Reader not loaded yet. Try again in a moment.</div>')}};
+  try{const t=await readAny(f);t?handle(t):show('<div class="msg err">No barcode found in the photo. Get closer and avoid glare.</div>')}catch{show('<div class="msg err">Reader not loaded yet. Try again in a moment.</div>')}};
 
 /* ---------- locations, mode, tabs ---------- */
 function fillLocs(){const o=LOCS().map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join(''),a=$('#loc').value||ls.get('pro.loc',''),b=$('#to').value||ls.get('pro.to','');
@@ -303,17 +326,36 @@ function tab(t){document.querySelectorAll('nav button').forEach(x=>x.setAttribut
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)tab(b.dataset.t)};
 
 /* ---------- cold room ---------- */
+let zoom=ls.get('pro.zoom',1);
+function hasPlan(){const L=S.master.locations||[],R=S.master.room||{};return +R.width_cm>0&&+R.depth_cm>0&&L.length&&L.every(l=>l.x_cm!==''&&l.x_cm!=null&&+l.w_cm>0&&+l.d_cm>0)}
 function renderRoom(){
   const{st}=compute(),q=$('#find').value.trim().toLowerCase(),L=LOCS();
-  const pallets=[...new Set(L.map(l=>l.replace(/\d+$/,'')))];
   const max=Math.max(1,...L.map(l=>st[l].kg)),all=L.map(l=>st[l]);
   $('#stats').innerHTML=`<div>Boxes<b>${all.reduce((a,s)=>a+s.boxes,0).toLocaleString()}</b></div><div>Kg<b>${fmtKg(all.reduce((a,s)=>a+s.kg,0))}</b></div><div>Stacks used<b>${L.filter(l=>st[l].boxes>0).length}/${L.length}</b></div>`;
   const hit=l=>q&&Object.values(st[l].items).some(i=>i.name.toLowerCase().includes(q));
-  $('#room').className='room'+(q?' dim':'');
-  $('#room').innerHTML=pallets.map(p=>`<div class="pal"><b>Pallet ${esc(p)}</b><div class="stk">${L.filter(l=>l.replace(/\d+$/,'')===p).map(l=>{const s=st[l];return`<button type="button" data-l="${esc(l)}" class="${S.sel===l?'sel ':''}${hit(l)?'hit':''}"><i style="height:${Math.round(s.kg/max*100)}%"></i><span>${esc(l)}</span><strong>${s.boxes}</strong><span>${s.boxes?fmtKg(s.kg)+'kg':'empty'}</span></button>`}).join('')}</div></div>`).join('')+'<div class="door">Door</div>';
+  const plan=hasPlan();$('#zoomBar').hidden=$('#planWrap').hidden=!plan;$('#room').hidden=plan;
+  if(plan){
+    const R=S.master.room,W=+R.width_cm,D=+R.depth_cm,dx=+R.door_x_cm||0,dw=+R.door_w_cm||100,wall=String(R.door_wall||'front').toLowerCase(),pad=30;
+    const box=$('#planWrap').clientWidth||360,px=Math.max(box-2,240)*zoom;
+    const door=wall==='back'?`M${dx} 0 h${dw}`:wall==='left'?`M0 ${dx} v${dw}`:wall==='right'?`M${W} ${dx} v${dw}`:`M${dx} ${D} h${dw}`;
+    const tx=wall==='back'?[dx+dw/2,-10]:wall==='left'?[-10,dx+dw/2]:wall==='right'?[W+10,dx+dw/2]:[dx+dw/2,D+24];
+    const svg=$('#plan');svg.setAttribute('viewBox',`${-pad} ${-pad} ${W+pad*2} ${D+pad*2}`);svg.setAttribute('width',px);svg.setAttribute('height',px*(D+pad*2)/(W+pad*2));
+    svg.className.baseVal=q?'dim':'';
+    svg.innerHTML=`<rect x="0" y="0" width="${W}" height="${D}" fill="none" stroke="currentColor" stroke-width="6" style="color:var(--ink)"/>
+      <path d="${door}" stroke="var(--yel)" stroke-width="10"/><text x="${tx[0]}" y="${tx[1]}" font-size="18" font-weight="700">Door</text>`+
+      S.master.locations.map(l=>{const c=String(l.code),s=st[c]||{boxes:0,kg:0},x=+l.x_cm,y=+l.y_cm,w=+l.w_cm,d=+l.d_cm,fh=d*s.kg/max,fs=Math.max(10,Math.min(w,d)*.28);
+        return`<g class="s${S.sel===c?' sel':''}${hit(c)?' hit':''}" data-l="${esc(c)}"><rect class="b" x="${x}" y="${y}" width="${w}" height="${d}" rx="4"/><rect class="f" x="${x}" y="${y+d-fh}" width="${w}" height="${fh}"/>
+          <text x="${x+w/2}" y="${y+fs*1.1}" font-size="${fs*.8}" font-weight="700">${esc(c)}</text><text x="${x+w/2}" y="${y+d/2+fs*.4}" font-size="${fs*1.2}" font-weight="800">${s.boxes}</text><text x="${x+w/2}" y="${y+d-fs*.4}" font-size="${fs*.6}">${s.boxes?fmtKg(s.kg)+'kg':''}</text></g>`}).join('');
+  }else{
+    const pallets=[...new Set(L.map(l=>l.replace(/\d+$/,'')))];
+    $('#room').className='room'+(q?' dim':'');
+    $('#room').innerHTML=pallets.map(p=>`<div class="pal"><b>Pallet ${esc(p)}</b><div class="stk">${L.filter(l=>l.replace(/\d+$/,'')===p).map(l=>{const s=st[l];return`<button type="button" data-l="${esc(l)}" class="${S.sel===l?'sel ':''}${hit(l)?'hit':''}"><i style="height:${Math.round(s.kg/max*100)}%"></i><span>${esc(l)}</span><strong>${s.boxes}</strong><span>${s.boxes?fmtKg(s.kg)+'kg':'empty'}</span></button>`}).join('')}</div></div>`).join('')+'<div class="door">Door</div>';
+  }
   if(S.sel&&st[S.sel]){const s=st[S.sel],it=Object.values(s.items).filter(i=>i.boxes>0).sort((a,b)=>(a.oldest||'9').localeCompare(b.oldest||'9'));
     $('#detail').innerHTML=`<b>Stack ${esc(S.sel)}</b> <span class="small">${s.boxes} boxes · ${fmtKg(s.kg)} kg · oldest first</span>`+(it.length?`<table style="margin-top:8px"><tr><th>Product</th><th class="n">Boxes</th><th class="n">Kg</th><th>Oldest</th></tr>${it.map(i=>`<tr><td>${esc(i.name)}</td><td class="n">${i.boxes}</td><td class="n">${fmtKg(i.kg)}</td><td>${fmtD(i.oldest)}</td></tr>`).join('')}</table>`:'<p class="small">Empty.</p>')}
 }
+$('#plan').addEventListener('click',e=>{const g=e.target.closest('g[data-l]');if(g){S.sel=g.dataset.l;renderRoom()}});
+$('#zoomBar').onclick=e=>{const b=e.target.closest('button[data-z]');if(!b)return;zoom=Math.min(4,Math.max(1,zoom*(b.dataset.z>0?1.5:1/1.5)));ls.set('pro.zoom',zoom);renderRoom()};
 $('#room').onclick=e=>{const b=e.target.closest('button[data-l]');if(b){S.sel=b.dataset.l;renderRoom()}};
 $('#find').oninput=renderRoom;
 
