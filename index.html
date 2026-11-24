@@ -119,6 +119,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
       <button class="pri">Save &amp; sync</button>
     </form><div id="setMsg"></div>
   </div>
+  <div class="card"><b>Set up another phone</b><p class="small">On a phone that is already connected, tap <b>Show setup QR</b>. On the new phone, open the app, tap <b>Scan setup QR</b> and point it at the code. Then only the name needs typing. Keep this QR private: it contains the token.</p>
+    <div class="row"><button type="button" class="pri" id="scanCfg">Scan setup QR</button><button type="button" id="showCfg">Show setup QR</button></div><div id="cfgQr" style="margin-top:10px"></div></div>
   <div class="card small" id="info"></div>
 </section>
 </main>
@@ -145,6 +147,7 @@ function parseCode(raw){
   let s=String(raw||'').trim();
   if(/^PROLOC:/i.test(s))return{type:'loc',loc:s.slice(7).trim().toUpperCase()};
   if(/^PROLOT:/i.test(s))return{type:'lot',id:s.slice(7).trim()};
+  if(/^PROCFG:/i.test(s)){try{const c=JSON.parse(s.slice(7));if(c.u&&c.t)return{type:'cfg',url:c.u,token:c.t}}catch{}return{type:'unknown'}}
   s=s.replace(/^\][A-Za-z]\d/,'');const f={};
   if(s.includes('(')){const re=/\((\d{2,4})\)([^()]*)/g;let m;while((m=re.exec(s)))f[m[1]]=m[2].replace(/[\s\x1d]/g,'')}
   else{s=s.replace(/\s/g,'');let i=0;
@@ -161,7 +164,7 @@ function parseCode(raw){
   if(!r.gtin)r.type=r.sscc?'sscc':'unknown';
   return r;
 }
-const rank=t=>{const r=parseCode(t);return r.type==='gs1'?3:r.type==='lot'||r.type==='loc'?2:r.type==='sscc'?1:0};
+const rank=t=>{const r=parseCode(t);return r.type==='gs1'?3:r.type==='lot'||r.type==='loc'||r.type==='cfg'?2:r.type==='sscc'?1:0};
 const boxKey=r=>r.serial?`${r.gtin}-${r.serial}`:`${r.gtin}-${r.lot||''}-${r.kg||''}-${r.prod||''}`;
 
 /* ---------- stock from server moves + offline queue ---------- */
@@ -214,6 +217,8 @@ function show(h){res.innerHTML=h}
 function feedback(ok){try{navigator.vibrate&&navigator.vibrate(ok?60:[60,60,60])}catch{}try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?1400:300;g.gain.value=.15;o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+(ok?.08:.25));setTimeout(()=>a.close(),400)}catch{}}
 function handle(raw){
   const r=parseCode(raw),mode=S.mode,loc=$('#loc').value,to=$('#to').value,P=prodMap();
+  if(r.type==='cfg'){feedback(true);S.cfg={url:r.url,token:r.token,name:S.cfg.name||''};ls.set('pro.cfg',S.cfg);sf.url.value=r.url;sf.token.value=r.token;
+    tab('set');$('#setMsg').innerHTML='<div class="msg ok">Setup QR read. Type your name below and tap Save &amp; sync.</div>';sf.name.focus();return}
   if(r.type==='loc'){if(!LOCS().includes(r.loc)){feedback(false);return show(`<div class="msg err">Unknown stack ${esc(r.loc)}</div>`)}
     (mode==='MOVE'?$('#to'):$('#loc')).value=r.loc;saveLoc();feedback(true);return show(`<div class="msg ok">${mode==='MOVE'?'Move to':'Stack set to'} ${esc(r.loc)}</div>`)}
   if(r.type==='lot'){const L=lotMap()[r.id];if(!L){feedback(false);return show(`<div class="msg err">Batch ${esc(r.id)} not found. Add it to the Lots tab and sync.</div>`)}
@@ -328,6 +333,10 @@ const sf=$('#setForm');['url','token','name'].forEach(k=>sf[k].value=S.cfg[k]||'
 sf.onsubmit=async e=>{e.preventDefault();S.cfg={url:sf.url.value.trim(),token:sf.token.value.trim(),name:sf.name.value.trim()};ls.set('pro.cfg',S.cfg);
   $('#setMsg').innerHTML='<div class="msg">Connecting…</div>';await trySync();
   $('#setMsg').innerHTML=S.err?`<div class="msg err">Could not connect: ${esc(S.err)}. Check the URL and token, and that you are online.</div>`:'<div class="msg ok">Connected. Products, batches and stock downloaded.</div>'};
+$('#scanCfg').onclick=()=>{tab('scan');startCam()};
+$('#showCfg').onclick=()=>{const b=$('#cfgQr');if(b.innerHTML){b.innerHTML='';return}
+  if(!S.cfg.url||!S.cfg.token){b.innerHTML='<div class="msg warn">Connect this phone first.</div>';return}
+  b.innerHTML=`<div style="background:#fff;padding:10px;display:inline-block;border-radius:8px">${qr('PROCFG:'+JSON.stringify({u:S.cfg.url,t:S.cfg.token}),5)}</div><div class="small">Tap Show setup QR again to hide it.</div>`};
 function renderInfo(){$('#info').innerHTML=`Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product names<br>Products: ${S.master.products.length} · Batches: ${S.master.lots.length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
 
 function renderAll(){renderRoom();renderLog();renderLots();renderRecent();renderInfo();renderSync()}
