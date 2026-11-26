@@ -48,7 +48,7 @@ button{font:700 15px system-ui;min-height:44px;padding:10px 16px;border-radius:8
 .ok{background:light-dark(#dff4e8,#123224)}.warn{background:light-dark(#fff1c2,#3a3110)}.err{background:light-dark(#fde0da,#3d1812)}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 5px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--mute)}.n{text-align:right;white-space:nowrap}
 .tag{font:800 12px system-ui;padding:2px 6px;border-radius:4px;color:#fff}.tIN{background:var(--in)}.tOUT{background:var(--out)}.tMOVE{background:var(--mov)}
-.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}.ver{display:block;font-size:11px;font-weight:600;color:var(--mute);margin-top:2px}
 .stats div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px;overflow:hidden}.stats b{display:block;font-size:clamp(17px,5.2vw,28px);white-space:nowrap}
 .plan{background:var(--card);border:3px solid var(--ink);border-radius:6px;padding:8px 6px 10px}
 .area{font-weight:800;font-size:13px;text-align:center;letter-spacing:.04em;margin:0 0 6px}
@@ -83,6 +83,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .door{position:absolute;right:16px;bottom:8px;font-size:13px;font-weight:700;color:var(--mute);border-top:3px solid var(--ink);width:110px;text-align:right;padding-top:4px}
 .scroll{overflow-x:auto}
 .opt{display:block;width:100%;text-align:left;margin-top:6px;font-weight:400}
+.bl{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.bl button{flex:none;min-height:38px;padding:6px 10px;font-size:13px}details.card summary{cursor:pointer}
 .planWrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--card);max-height:70vh;touch-action:pan-x pan-y}
 #plan{display:block;font-family:system-ui}#plan .s{cursor:pointer}#plan .s rect.b{fill:var(--bg);stroke:var(--ink);stroke-width:2}
 #plan .s.sel rect.b{stroke:var(--yel);stroke-width:6}#plan .s.hit rect.b{stroke:var(--mov);stroke-width:6}#plan.dim .s:not(.hit){opacity:.35}
@@ -93,11 +94,11 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
   #print .l svg{width:36mm;height:36mm}#print .b{font-size:30pt;font-weight:800;line-height:1}#print .lv{font-size:16pt;font-weight:700}#print .c{font-size:8pt;color:#555}
   #print .idl{display:flex;align-items:center;gap:2mm;overflow:hidden}#print .idl b{display:block;font-size:12pt}#print .idl span{display:block;font-size:7pt}
   #print .idl.roll{width:50mm;height:30mm;padding:2mm;break-after:page}#print .idl.roll svg{width:25mm;height:25mm;flex:none}
-  #print .ida4{display:grid;grid-template-columns:repeat(3,70mm);grid-template-rows:repeat(8,37mm);width:210mm;height:296mm;margin-top:.5mm;break-after:page;overflow:hidden}#print .ida4 .idl{padding:3mm 4mm;height:37mm}#print .ida4 svg{width:29mm;height:29mm;flex:none}#print .ida4 b{font-size:14pt}}
+  #print .ida4{display:grid;grid-template-columns:repeat(3,70mm);grid-template-rows:repeat(8,37mm);width:210mm;height:296mm;margin-top:.5mm;break-after:page;overflow:hidden}#print .ida4 .idl{padding:3mm 4mm;height:37mm}#print .ida4 svg{width:29mm;height:29mm;flex:none}#print .ida4 b{font-size:12pt}#print .idl .tx{display:grid;gap:.6mm;min-width:0}#print .idl em{font-style:normal;font-weight:700;font-size:8pt;line-height:1.15;max-height:9.5mm;overflow:hidden}#print .idl i{font-style:normal;font-size:9pt;font-weight:700}#print .idl.roll em{font-size:6.5pt;max-height:6mm}#print .idl.roll i{font-size:7pt}#print .bcard{display:flex;gap:10mm;align-items:flex-start;border:2px solid #000;padding:10mm}#print .bcard svg{width:70mm;height:70mm;flex:none}#print .bcard>div{min-width:0;flex:1}#print .bcard h1{font-size:20pt;margin:2mm 0;overflow-wrap:anywhere}#print .bcard p{font-size:13pt;line-height:1.5}}
 </style>
 </head>
 <body>
-<header><h1><b>PRO</b>Cold Room</h1><button id="sync" type="button">…</button></header>
+<header><h1><b>PRO</b>Cold Room <small class="ver">v10 · 26 Nov</small></h1><button id="sync" type="button">…</button></header>
 <nav><div>
 <button data-t="scan" aria-selected="true">Scan</button><button data-t="room">Cold room</button><button data-t="log">Log</button><button data-t="labels" data-admin>Labels</button><button data-t="set">Settings</button>
 </div></nav>
@@ -137,16 +138,31 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 </section>
 
 <section id="v-labels" hidden>
-  <div class="card"><b>Box ID labels</b>
-    <p class="small">Unique QR labels for boxes without a usable barcode. Numbers are reserved in the Google Sheet, so every label is unique across all phones. Needs signal.</p>
-    <div class="row"><label style="flex:1 1 110px">How many<input id="idCount" type="number" inputmode="numeric" min="1" max="2000" value="100"></label>
-      <label style="flex:1 1 160px">Paper<select id="idPaper"><option value="roll">Label roll 50×30 mm (1 per label)</option><option value="a4">A4 sticker sheet, 24 labels 70×37 mm</option></select></label>
-      <button type="button" class="pri" id="printIds">Reserve &amp; print</button></div>
-    <div id="idMsg"></div><div class="small" id="idHist" style="margin-top:8px"></div>
+  <div class="card"><b>New incoming batch</b>
+    <p class="small">Set up the product before it arrives. Box labels come out with the product already on them, so at unloading staff only type the weight.</p>
+    <div id="bp"></div>
+    <div class="form" style="margin-top:10px">
+      <label>Supplier / brand<input id="bSup" placeholder="e.g. Swift, Black Gold"></label>
+      <label>Supplier batch / lot code<input id="bCode" placeholder="e.g. I16YSH25"></label>
+      <label>Container / PO ref<input id="bRef" placeholder="e.g. TGHU 123456 / PO-0451"></label>
+      <label>Production date<input id="bProd" type="date"></label>
+      <label>Expiry date<input id="bExp" type="date"></label>
+      <label>Number of boxes<input id="bBoxes" type="number" inputmode="numeric" min="1" max="2000"></label>
+      <label>Kg per box (only if all boxes weigh the same)<input id="bKg" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 20"></label>
+      <label>Print as<select id="bType"><option value="labels">Box labels: one per box</option><option value="card">One batch card: count boxes when scanning</option></select></label>
+      <label id="bPaperW">Paper<select id="bPaper"><option value="a4">A4 sticker sheet, 24 labels 70×37 mm</option><option value="roll">Label roll 50×30 mm</option></select></label>
+    </div>
+    <button type="button" class="pri" id="bReview" style="margin-top:12px;width:100%">Review</button>
+    <div id="bMsg"></div>
   </div>
+  <div class="card"><b>Recent batches</b> <span class="small">Print again uses the same numbers. No new numbers are taken.</span><div id="bList" style="margin-top:8px"></div></div>
   <div class="card"><b>Location labels</b><p class="small">One label per level on each rack stack (e.g. A1 · BAWAH). Scan it to set the location.</p>
     <div class="row"><select id="lblRack" style="flex:1 1 140px"></select><button type="button" id="printLocs">Print location labels</button></div></div>
-  <div class="card" id="lotList"></div>
+  <details class="card"><summary><b>Blank box labels (no product)</b></summary>
+    <p class="small">Spare labels for unplanned arrivals. Product is chosen at scanning.</p>
+    <div class="row"><label style="flex:1 1 110px">How many<input id="idCount" type="number" inputmode="numeric" min="1" max="2000" value="24"></label>
+      <label style="flex:1 1 160px">Paper<select id="idPaper"><option value="a4">A4 sticker sheet, 24 labels 70×37 mm</option><option value="roll">Label roll 50×30 mm</option></select></label>
+      <button type="button" id="printIds">Review</button></div><div id="idMsg"></div></details>
 </section>
 
 <section id="v-set" hidden>
@@ -255,7 +271,7 @@ async function trySync(){
     }
     const g=await(await fetch(S.cfg.url+'?t='+encodeURIComponent(S.cfg.token))).json();
     if(!g.ok)throw new Error(g.error||'rejected');
-    S.master={products:g.products||[],lots:g.lots||[],locations:g.locations||[],items:g.items||[],room:g.room||{}};S.server=g.moves||[];
+    S.master={products:g.products||[],lots:g.lots||[],locations:g.locations||[],items:g.items||[],room:g.room||{},batches:g.batches||[]};S.server=g.moves||[];
     ls.set('pro.master',S.master);ls.set('pro.moves',S.server);S.lastSync=Date.now();ls.set('pro.last',S.lastSync);
     fillLocs();renderAll();
     if(S.queue.length)setTimeout(trySync,500);
@@ -300,18 +316,21 @@ function handle(raw){
 }
 
 /* PRO ID label, new box: receive */
+function batchOf(key){const n=+String(key).replace(/\D/g,'');return(S.master.batches||[]).find(b=>b.type==='labels'&&b.from&&n>=b.from&&n<=b.to)}
 function receiveCard(r,loc,raw){
-  let sel=S.rcv.sku||'';busy=true;feedback(true);
+  const B=batchOf(r.key);
+  let sel=B?B.sku:(S.rcv.sku||'');busy=true;feedback(true);
+  const pre=B?{prod:B.prod||'',exp:B.exp||'',lot:B.batch_code||''}:S.rcv;
   const pk=picker('rp',sel,s=>{sel=s;draw()});
   function draw(){
     const pack=sel&&isPack(sel),pkg=sel?packKg(sel):null;
-    show(`<div class="label"><div class="small">New box · ${esc(r.label)} → IN ${esc(locName(loc))}</div><h3>${sel?esc(skuName(sel)):'<span style="color:var(--out)">Choose product</span>'}</h3><div class="small">${esc(sel)}</div>
+    show(`<div class="label"><div class="small">New box · ${esc(r.label)} → IN ${esc(locName(loc))}${B?` · <b>${esc(B.batch_id)}</b>${B.ref?' · '+esc(B.ref):''}`:''}</div><h3>${sel?esc(skuName(sel)):'<span style="color:var(--out)">Choose product</span>'}</h3><div class="small">${esc(sel)}</div>
       ${sel?'<button type="button" id="rChg" style="margin-top:6px;min-height:36px;padding:4px 10px">Change product</button>':''}${pk.html}
       <div class="kv" style="margin-top:10px">
       ${pack?`<label>Packs in box<input id="rPk" type="number" inputmode="numeric" min="1" required></label><label>Kg per pack<input id="rPkg" type="number" inputmode="decimal" step="0.001" value="${pkg??''}"></label>`
-            :`<label>Weight (kg)<input id="rKg" type="number" inputmode="decimal" step="0.01" min="0.01" required></label>`}
-      <label>Production date<input id="rProd" type="date" value="${esc(S.rcv.prod)}"></label><label>Expiry date<input id="rExp" type="date" value="${esc(S.rcv.exp)}"></label>
-      <label>Lot / batch<input id="rLot" value="${esc(S.rcv.lot)}"></label></div>
+            :`<label>Weight (kg)<input id="rKg" type="number" inputmode="decimal" step="0.01" min="0.01" required value="${B&&B.kg_per_box?B.kg_per_box:''}"></label>`}
+      <label>Production date<input id="rProd" type="date" value="${esc(pre.prod)}"></label><label>Expiry date<input id="rExp" type="date" value="${esc(pre.exp)}"></label>
+      <label>Lot / batch<input id="rLot" value="${esc(pre.lot)}"></label></div>
       <div class="row" style="margin-top:12px"><button type="button" class="pri" id="rOk" style="flex:2" ${sel?'':'disabled'}>Confirm IN</button><button type="button" id="rX">Cancel</button></div>
       <button type="button" id="rLink" style="margin-top:8px;width:100%">This box is already in stock (no label yet)</button></div>`);
     pk.bind();if(!sel)pk.open();else($('#rKg')||$('#rPk')).focus();
@@ -322,7 +341,7 @@ function receiveCard(r,loc,raw){
       const prod=$('#rProd').value,exp=$('#rExp').value,lot=$('#rLot').value.trim();let kg=null,packs=null;
       if(pack){packs=+$('#rPk').value;const k=+$('#rPkg').value;if(!(packs>0))return $('#rPk').focus();kg=k>0?Math.round(packs*k*1000)/1000:null}
       else{kg=+$('#rKg').value;if(!(kg>0))return $('#rKg').focus()}
-      S.rcv={sku:sel,prod,exp,lot};ls.set('pro.rcv',S.rcv);renderRcv();
+      if(!B){S.rcv={sku:sel,prod,exp,lot};ls.set('pro.rcv',S.rcv);renderRcv()}
       addMove({mode:'IN',kind:'box',key:r.key,loc,sku:sel,kg,packs,prod,exp,lot,serial:r.label,raw:String(raw).slice(0,60)});
       feedback(true);renderAll();done(`<div class="msg ok">Saved: IN · ${esc(r.label)} · ${esc(skuName(sel))} · ${qtyTxt({kg,packs})} @ ${esc(locName(loc))}</div>`)};
   }
@@ -529,23 +548,62 @@ function renderLog(){const q=new Set(S.queue.map(m=>m.id)),M=allMoves().filter(m
 /* ---------- labels ---------- */
 const qr=(t,c=4)=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag(c,1)};
 function printNow(html,css){$('#print').innerHTML=`<style>@media print{@page{${css}}}</style>`+html;setTimeout(()=>print(),50)}
-$('#printIds').onclick=async()=>{if(!isAdmin())return;
-  const n=Math.min(2000,Math.max(1,+$('#idCount').value||0)),paper=$('#idPaper').value;
-  if(!S.cfg.url||!navigator.onLine)return $('#idMsg').innerHTML='<div class="msg err">Needs signal and a connected sheet, so numbers stay unique.</div>';
-  $('#idMsg').innerHTML='<div class="msg">Reserving numbers…</div>';
-  let r;try{r=await post({reserve:n})}catch(e){return $('#idMsg').innerHTML=`<div class="msg err">Could not reserve: ${esc(e.message)}</div>`}
-  S.ids.unshift({from:r.from,to:r.to,at:Date.now()});ls.set('pro.ids',S.ids.slice(0,30));renderIds();
-  const ids=[];for(let i=r.from;i<=r.to;i++)ids.push('PRO-'+String(i).padStart(6,'0'));
-  $('#idMsg').innerHTML=`<div class="msg ok">Reserved ${ids[0]} to ${ids[ids.length-1]}. Opening print…</div>`;
-  if(paper==='roll')printNow(ids.map(id=>`<div class="idl roll">${qr(id,4)}<div><b>${id}</b><span>PT PRO · Cold room</span></div></div>`).join(''),'size:50mm 30mm;margin:0');
-  else{const pages=[];for(let i=0;i<ids.length;i+=24)pages.push(ids.slice(i,i+24));
-    printNow(pages.map(pg=>`<div class="ida4">${pg.map(id=>`<div class="idl">${qr(id,4)}<div><b>${id}</b><span>PT PRO · Cold room</span></div></div>`).join('')}</div>`).join(''),'size:A4;margin:0')}
+const pid=n=>'PRO-'+String(n).padStart(6,'0');
+const short=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+function printBoxLabels(ids,paper,b){
+  const name=b?short(b.product||skuName(b.sku)||'',paper==='roll'?44:56):'';
+  const sub=b?[b.batch_id,b.batch_code,b.ref].filter(Boolean).join(' · '):'PT PRO · Cold room';
+  const one=id=>`<div class="idl${paper==='roll'?' roll':''}">${qr(id,4)}<div class="tx">${b?`<em>${esc(name)}</em>`:''}<b>${id}</b><span>${esc(short(sub,40))}</span>${b?`<i>Kg: ${b.kg_per_box?esc(fmtKg(b.kg_per_box)):'________'}</i>`:''}</div></div>`;
+  if(paper==='roll')return printNow(ids.map(one).join(''),'size:50mm 30mm;margin:0');
+  const pages=[];for(let i=0;i<ids.length;i+=24)pages.push(ids.slice(i,i+24));
+  printNow(pages.map(pg=>`<div class="ida4">${pg.map(one).join('')}</div>`).join(''),'size:A4;margin:0');
+}
+function printCard(b){printNow(`<div class="bcard">${qr('PROLOT:'+b.batch_id,8)}<div><div class="b">${esc(b.batch_id)}</div><h1>${esc(b.product||skuName(b.sku))}</h1>
+  <p>${b.supplier?'Supplier: '+esc(b.supplier)+'<br>':''}${b.batch_code?'Batch: '+esc(b.batch_code)+'<br>':''}${b.ref?'Ref: '+esc(b.ref)+'<br>':''}Prod: ${fmtD(b.prod)} · Exp: ${fmtD(b.exp)}<br>${b.boxes} boxes${b.kg_per_box?' × '+fmtKg(b.kg_per_box)+' kg':''}</p></div></div>`,'size:A4;margin:12mm')}
+let bSku='';
+const bpk=picker('bpi','',s=>{bSku=s;renderBp()});
+function renderBp(){$('#bp').innerHTML=`<div class="small">Product</div><h3 style="margin:2px 0">${bSku?esc(skuName(bSku)):'<span style="color:var(--out)">Choose product</span>'}</h3>${bSku?'<button type="button" id="bChg" style="min-height:34px;padding:4px 10px">Change product</button>':''}${bpk.html}`;
+  bpk.bind();if(!bSku)$('#bpi').hidden=false;$('#bChg')&&($('#bChg').onclick=()=>bpk.open())}
+$('#bType').onchange=()=>$('#bPaperW').hidden=$('#bType').value!=='labels';
+$('#bReview').onclick=()=>{
+  const b={sku:bSku,supplier:$('#bSup').value.trim(),batch_code:$('#bCode').value.trim(),ref:$('#bRef').value.trim(),prod:$('#bProd').value,exp:$('#bExp').value,
+    boxes:Math.round(+$('#bBoxes').value||0),kg_per_box:+$('#bKg').value||'',type:$('#bType').value,by:S.cfg.name||''};
+  if(!b.sku)return $('#bMsg').innerHTML='<div class="msg err">Choose the product first.</div>';
+  if(!(b.boxes>0))return $('#bMsg').innerHTML='<div class="msg err">Type the number of boxes.</div>',$('#bBoxes').focus();
+  if(b.boxes>2000)return $('#bMsg').innerHTML='<div class="msg err">Maximum 2,000 boxes per batch.</div>';
+  const paper=$('#bPaper').value,sheets=Math.ceil(b.boxes/24);
+  $('#bMsg').innerHTML=`<div class="msg warn"><b>Check before confirming</b><br>${esc(skuName(b.sku))}<br>${[b.supplier,b.batch_code&&'batch '+b.batch_code,b.ref].filter(Boolean).map(esc).join(' · ')}<br>
+    ${b.type==='labels'?`<b>${b.boxes} box labels</b> (${paper==='a4'?sheets+' A4 sheet'+(sheets>1?'s':''):'label roll'}) · uses ${b.boxes} new numbers`:'<b>1 batch card</b> for '+b.boxes+' boxes'}
+    ${b.kg_per_box?'<br>Fixed weight '+fmtKg(b.kg_per_box)+' kg per box':''}
+    <div class="row" style="margin-top:10px"><button type="button" class="pri" id="bOk" style="flex:2">Confirm &amp; print</button><button type="button" id="bEdit">Edit</button></div></div>`;
+  $('#bEdit').onclick=()=>$('#bMsg').innerHTML='';
+  $('#bOk').onclick=async()=>{if(!isAdmin())return;
+    if(!S.cfg.url||!navigator.onLine)return $('#bMsg').innerHTML='<div class="msg err">Needs signal and a connected sheet, so numbers stay unique.</div>';
+    $('#bOk').disabled=true;$('#bMsg').insertAdjacentHTML('beforeend','<div class="msg">Saving batch…</div>');
+    let r;try{r=await post({createBatch:b})}catch(e){return $('#bMsg').innerHTML=`<div class="msg err">Not saved: ${esc(e.message)}</div>`}
+    const B=r.batch;(S.master.batches=S.master.batches||[]).push(B);if(B.type==='card')S.master.lots.push({id:B.batch_id,brand:B.supplier,code:B.batch_code,product:B.product,batch:B.batch_code,prod_date:B.prod,exp_date:B.exp,kg_per_box:B.kg_per_box,sku:B.sku,sku_name:B.product});
+    ls.set('pro.master',S.master);renderBatches();
+    $('#bMsg').innerHTML=`<div class="msg ok">Saved ${esc(B.batch_id)}${B.from?` · labels ${pid(B.from)} to ${pid(B.to)}`:''}. Opening print…</div>`;
+    ['bSup','bCode','bRef','bProd','bExp','bBoxes','bKg'].forEach(i=>$('#'+i).value='');
+    if(B.type==='labels'){const ids=[];for(let i=B.from;i<=B.to;i++)ids.push(pid(i));printBoxLabels(ids,paper,B)}else printCard(B);
+  };
 };
-function renderIds(){$('#idHist').innerHTML=S.ids.length?'Printed on this phone: '+S.ids.slice(0,5).map(x=>`PRO-${String(x.from).padStart(6,'0')}…${String(x.to).padStart(6,'0')}`).join(', '):''}
+function renderBatches(){const Bs=[...(S.master.batches||[])].reverse().slice(0,25);
+  const used=new Set(allMoves().filter(m=>m.mode==='IN'||m.mode==='LINK').map(m=>m.key));
+  $('#bList').innerHTML=Bs.length?Bs.map(b=>{let rc='';if(b.type==='labels'&&b.from){let n=0;for(let i=b.from;i<=b.to;i++)if(used.has('ID-'+String(i).padStart(6,'0')))n++;rc=`${n}/${b.boxes} received`}
+    return`<div class="bl"><div><b>${esc(b.batch_id)}</b> · ${esc(b.product||skuName(b.sku))}<div class="small">${b.type==='labels'?`${pid(b.from)} – ${pid(b.to)} · ${rc}`:`Batch card · ${b.boxes} boxes`}${b.ref?' · '+esc(b.ref):''}${b.batch_code?' · '+esc(b.batch_code):''} · ${esc(String(b.created).slice(0,10))}</div></div>
+      <button type="button" data-rp="${esc(b.batch_id)}">Print again</button></div>`}).join(''):'<p class="small">No batches yet.</p>'}
+$('#bList').onclick=e=>{const x=e.target.closest('[data-rp]');if(!x)return;const b=(S.master.batches||[]).find(y=>y.batch_id===x.dataset.rp);if(!b)return;
+  if(b.type==='labels'){const ids=[];for(let i=b.from;i<=b.to;i++)ids.push(pid(i));printBoxLabels(ids,$('#bPaper').value,b)}else printCard(b)};
+$('#printIds').onclick=()=>{if(!isAdmin())return;const n=Math.min(2000,Math.max(1,+$('#idCount').value||0)),paper=$('#idPaper').value;
+  $('#idMsg').innerHTML=`<div class="msg warn">Print <b>${n} blank labels</b>? This uses ${n} new numbers.<div class="row" style="margin-top:8px"><button type="button" class="pri" id="idOk">Confirm &amp; print</button><button type="button" id="idX">Cancel</button></div></div>`;
+  $('#idX').onclick=()=>$('#idMsg').innerHTML='';
+  $('#idOk').onclick=async()=>{if(!S.cfg.url||!navigator.onLine)return $('#idMsg').innerHTML='<div class="msg err">Needs signal.</div>';$('#idOk').disabled=true;
+    let r;try{r=await post({reserve:n})}catch(e){return $('#idMsg').innerHTML=`<div class="msg err">Could not reserve: ${esc(e.message)}</div>`}
+    const ids=[];for(let i=r.from;i<=r.to;i++)ids.push(pid(i));$('#idMsg').innerHTML=`<div class="msg ok">Blank labels ${ids[0]} to ${ids[ids.length-1]}. Opening print…</div>`;printBoxLabels(ids,paper,null)}};
 $('#printLocs').onclick=()=>{const r=$('#lblRack').value,L=(S.master.locations||[]).filter(l=>r?l.rack===r:true);
   printNow(`<div class="g">${L.map(l=>`<div class="l">${qr('PROLOC:'+l.code,5)}<div><div class="b">${esc(base(l.code))}</div><div class="lv">${esc((LVN[l.level]||'').toUpperCase())}</div><div class="c">PROLOC:${esc(l.code)}</div></div></div>`).join('')}</div>`,'size:A4;margin:10mm')};
-function renderLots(){const L=S.master.lots;$('#lotList').hidden=!L.length;$('#lotList').innerHTML=L.length?`<b>Batch cards</b> <span class="small">(optional, for batch-level items)</span><div class="row" style="margin-top:6px"><button type="button" id="printLots">Print batch cards</button></div>`:'';
-  $('#printLots')&&($('#printLots').onclick=()=>printNow(`<div class="g">${L.map(l=>`<div class="l">${qr('PROLOT:'+l.id,5)}<div><div class="b">${esc(l.code)}</div><div>${esc(lotName(l))}<br>Batch ${esc(l.batch)}</div></div></div>`).join('')}</div>`,'size:A4;margin:10mm'))}
+renderBp();
 
 /* ---------- settings ---------- */
 const sf=$('#setForm');
@@ -572,9 +630,9 @@ $('#scanCfg').onclick=()=>{tab('scan');startCam()};
 $('#showCfg').onclick=()=>{const b=$('#cfgQr');if(!isAdmin())return;if(b.innerHTML){b.innerHTML='';return}
   if(!S.cfg.url||!S.cfg.token){b.innerHTML='<div class="msg warn">Connect this phone first.</div>';return}
   b.innerHTML=`<div style="background:#fff;padding:10px;display:inline-block;border-radius:8px">${qr('PROCFG:'+JSON.stringify({u:S.cfg.url,t:S.cfg.token}),5)}</div><div class="small">Tap Show setup QR again to hide it.</div>`};
-function renderInfo(){$('#info').innerHTML=`<b>App version: 26 Nov · v9</b><br>Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
+function renderInfo(){$('#info').innerHTML=`<b>App version: v10 · 26 Nov</b><br>Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
 
-function renderAll(){renderRoom();renderLog();renderLots();renderRecent();renderInfo();renderSync();renderRcv();renderIds()}
+function renderAll(){renderRoom();renderLog();renderBatches();renderRecent();renderInfo();renderSync();renderRcv()}
 fillLocs();renderAll();
 if(!S.cfg.url)tab('set');else trySync();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
