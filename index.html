@@ -572,7 +572,7 @@ $('#scanCfg').onclick=()=>{tab('scan');startCam()};
 $('#showCfg').onclick=()=>{const b=$('#cfgQr');if(!isAdmin())return;if(b.innerHTML){b.innerHTML='';return}
   if(!S.cfg.url||!S.cfg.token){b.innerHTML='<div class="msg warn">Connect this phone first.</div>';return}
   b.innerHTML=`<div style="background:#fff;padding:10px;display:inline-block;border-radius:8px">${qr('PROCFG:'+JSON.stringify({u:S.cfg.url,t:S.cfg.token}),5)}</div><div class="small">Tap Show setup QR again to hide it.</div>`};
-function renderInfo(){$('#info').innerHTML=`Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
+function renderInfo(){$('#info').innerHTML=`<b>App version: 26 Nov · v9</b><br>Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
 
 function renderAll(){renderRoom();renderLog();renderLots();renderRecent();renderInfo();renderSync();renderRcv();renderIds()}
 fillLocs();renderAll();
