@@ -65,18 +65,18 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 #plan .s.sel rect.b{stroke:var(--yel);stroke-width:6}#plan .s.hit rect.b{stroke:var(--mov);stroke-width:6}#plan.dim .s:not(.hit){opacity:.35}
 #plan rect.f{fill:var(--fill)}#plan text{fill:var(--ink);text-anchor:middle;pointer-events:none}
 #print{display:none}
-@media print{body>*:not(#print){display:none!important}#print{display:block;color:#000;font-family:Arial,sans-serif}
+@media print{html,body{background:#fff!important}body>*:not(#print){display:none!important}#print{display:block;color:#000;font-family:Arial,sans-serif}
   #print .g{display:grid;grid-template-columns:1fr 1fr;gap:6mm}#print .l{display:flex;gap:4mm;align-items:center;border:1px solid #000;padding:4mm;break-inside:avoid}
   #print .l svg{width:36mm;height:36mm}#print .b{font-size:30pt;font-weight:800;line-height:1}#print .lv{font-size:16pt;font-weight:700}#print .c{font-size:8pt;color:#555}
   #print .idl{display:flex;align-items:center;gap:2mm;overflow:hidden}#print .idl b{display:block;font-size:12pt}#print .idl span{display:block;font-size:7pt}
   #print .idl.roll{width:50mm;height:30mm;padding:2mm;break-after:page}#print .idl.roll svg{width:25mm;height:25mm;flex:none}
-  #print .ida4{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:33.9mm}#print .ida4 .idl{padding:2mm 3mm;break-inside:avoid}#print .ida4 svg{width:27mm;height:27mm;flex:none}}
+  #print .ida4{display:grid;grid-template-columns:repeat(3,70mm);grid-template-rows:repeat(8,37mm);width:210mm;height:296mm;margin-top:.5mm;break-after:page;overflow:hidden}#print .ida4 .idl{padding:3mm 4mm;height:37mm}#print .ida4 svg{width:29mm;height:29mm;flex:none}#print .ida4 b{font-size:14pt}}
 </style>
 </head>
 <body>
 <header><h1><b>PRO</b>Cold Room</h1><button id="sync" type="button">…</button></header>
 <nav><div>
-<button data-t="scan" aria-selected="true">Scan</button><button data-t="room">Cold room</button><button data-t="log">Log</button><button data-t="labels">Labels</button><button data-t="set">Settings</button>
+<button data-t="scan" aria-selected="true">Scan</button><button data-t="room">Cold room</button><button data-t="log">Log</button><button data-t="labels" data-admin>Labels</button><button data-t="set">Settings</button>
 </div></nav>
 <main>
 <section id="v-scan">
@@ -119,7 +119,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
   <div class="card"><b>Box ID labels</b>
     <p class="small">Unique QR labels for boxes without a usable barcode. Numbers are reserved in the Google Sheet, so every label is unique across all phones. Needs signal.</p>
     <div class="row"><label style="flex:1 1 110px">How many<input id="idCount" type="number" inputmode="numeric" min="1" max="2000" value="100"></label>
-      <label style="flex:1 1 160px">Paper<select id="idPaper"><option value="roll">Label roll 50×30 mm (1 per label)</option><option value="a4">A4 sticker sheet (3×8)</option></select></label>
+      <label style="flex:1 1 160px">Paper<select id="idPaper"><option value="roll">Label roll 50×30 mm (1 per label)</option><option value="a4">A4 sticker sheet, 24 labels 70×37 mm</option></select></label>
       <button type="button" class="pri" id="printIds">Reserve &amp; print</button></div>
     <div id="idMsg"></div><div class="small" id="idHist" style="margin-top:8px"></div>
   </div>
@@ -131,15 +131,16 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 <section id="v-set" hidden>
   <div class="card">
     <b>Connection to the PRO Google Sheet</b>
+    <p class="small" id="roleInfo"></p>
     <form id="setForm" style="display:grid;gap:10px;margin-top:10px">
-      <label>Web app URL (from Apps Script deploy)<input name="url" placeholder="https://script.google.com/macros/s/…/exec" required></label>
-      <label>Token (from setup log)<input name="token" required></label>
+      <div id="adminFields" style="display:grid;gap:10px"><label>Web app URL (from Apps Script deploy)<input name="url" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label>Token (from setup log)<input name="token" type="password" autocomplete="off"></label></div>
       <label>Your name (shown in the log)<input name="name" required placeholder="e.g. Andi"></label>
       <button class="pri">Save &amp; sync</button>
     </form><div id="setMsg"></div>
   </div>
-  <div class="card"><b>Set up another phone</b><p class="small">On a connected phone tap <b>Show setup QR</b>. On the new phone tap <b>Scan setup QR</b> and point at it. Keep it private: it contains the token.</p>
-    <div class="row"><button type="button" class="pri" id="scanCfg">Scan setup QR</button><button type="button" id="showCfg">Show setup QR</button></div><div id="cfgQr" style="margin-top:10px"></div></div>
+  <div class="card" id="setupCard"><b>Set up another phone</b><p class="small">On a connected phone tap <b>Show setup QR</b>. On the new phone tap <b>Scan setup QR</b> and point at it. Keep it private: it contains the token.</p>
+    <div class="row"><button type="button" class="pri" id="scanCfg">Scan setup QR</button><button type="button" id="showCfg" data-admin>Show setup QR</button></div><div id="cfgQr" style="margin-top:10px"></div></div>
   <div class="card small" id="info"></div>
 </section>
 </main>
@@ -263,7 +264,7 @@ const where=(mode,loc,to,from)=>mode==='MOVE'?`${esc(from?locName(from):'?')} �
 
 function handle(raw){
   const r=parseCode(raw),mode=S.mode,loc=$('#loc').value,to=$('#to').value;
-  if(r.type==='cfg'){feedback(true);S.cfg={url:r.url,token:r.token,name:S.cfg.name||''};ls.set('pro.cfg',S.cfg);sf.url.value=r.url;sf.token.value=r.token;tab('set');$('#setMsg').innerHTML='<div class="msg ok">Setup QR read. Type your name below and tap Save &amp; sync.</div>';sf.name.focus();return}
+  if(r.type==='cfg'){feedback(true);S.cfg={url:r.url,token:r.token,name:S.cfg.name||'',role:'staff'};ls.set('pro.cfg',S.cfg);renderRole();tab('set');$('#setMsg').innerHTML='<div class="msg ok">Setup QR read. Type your name below and tap Save &amp; sync.</div>';sf.name.focus();return}
   if(r.type==='loc'){if(!LOCS().includes(r.loc)){feedback(false);return show(`<div class="msg err">Unknown location ${esc(r.loc)}</div>`)}
     (mode==='MOVE'?$('#to'):$('#loc')).value=r.loc;saveLoc();feedback(true);return show(`<div class="msg ok">${mode==='MOVE'?'Move to':'Location'}: ${esc(locName(r.loc))}</div>`)}
   if(r.type==='lot')return lotCard(r,mode,loc,to);
@@ -487,7 +488,7 @@ function renderLog(){const q=new Set(S.queue.map(m=>m.id)),M=allMoves().filter(m
 /* ---------- labels ---------- */
 const qr=(t,c=4)=>{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag(c,1)};
 function printNow(html,css){$('#print').innerHTML=`<style>@media print{@page{${css}}}</style>`+html;setTimeout(()=>print(),50)}
-$('#printIds').onclick=async()=>{
+$('#printIds').onclick=async()=>{if(!isAdmin())return;
   const n=Math.min(2000,Math.max(1,+$('#idCount').value||0)),paper=$('#idPaper').value;
   if(!S.cfg.url||!navigator.onLine)return $('#idMsg').innerHTML='<div class="msg err">Needs signal and a connected sheet, so numbers stay unique.</div>';
   $('#idMsg').innerHTML='<div class="msg">Reserving numbers…</div>';
@@ -496,7 +497,8 @@ $('#printIds').onclick=async()=>{
   const ids=[];for(let i=r.from;i<=r.to;i++)ids.push('PRO-'+String(i).padStart(6,'0'));
   $('#idMsg').innerHTML=`<div class="msg ok">Reserved ${ids[0]} to ${ids[ids.length-1]}. Opening print…</div>`;
   if(paper==='roll')printNow(ids.map(id=>`<div class="idl roll">${qr(id,4)}<div><b>${id}</b><span>PT PRO · Cold room</span></div></div>`).join(''),'size:50mm 30mm;margin:0');
-  else printNow(`<div class="ida4">${ids.map(id=>`<div class="idl">${qr(id,4)}<div><b>${id}</b><span>PT PRO</span></div></div>`).join('')}</div>`,'size:A4;margin:8mm');
+  else{const pages=[];for(let i=0;i<ids.length;i+=24)pages.push(ids.slice(i,i+24));
+    printNow(pages.map(pg=>`<div class="ida4">${pg.map(id=>`<div class="idl">${qr(id,4)}<div><b>${id}</b><span>PT PRO · Cold room</span></div></div>`).join('')}</div>`).join(''),'size:A4;margin:0')}
 };
 function renderIds(){$('#idHist').innerHTML=S.ids.length?'Printed on this phone: '+S.ids.slice(0,5).map(x=>`PRO-${String(x.from).padStart(6,'0')}…${String(x.to).padStart(6,'0')}`).join(', '):''}
 $('#printLocs').onclick=()=>{const r=$('#lblRack').value,L=(S.master.locations||[]).filter(l=>r?l.rack===r:true);
@@ -505,12 +507,28 @@ function renderLots(){const L=S.master.lots;$('#lotList').hidden=!L.length;$('#l
   $('#printLots')&&($('#printLots').onclick=()=>printNow(`<div class="g">${L.map(l=>`<div class="l">${qr('PROLOT:'+l.id,5)}<div><div class="b">${esc(l.code)}</div><div>${esc(lotName(l))}<br>Batch ${esc(l.batch)}</div></div></div>`).join('')}</div>`,'size:A4;margin:10mm'))}
 
 /* ---------- settings ---------- */
-const sf=$('#setForm');['url','token','name'].forEach(k=>sf[k].value=S.cfg[k]||'');
-sf.onsubmit=async e=>{e.preventDefault();S.cfg={url:sf.url.value.trim(),token:sf.token.value.trim(),name:sf.name.value.trim()};ls.set('pro.cfg',S.cfg);
+const sf=$('#setForm');
+const isAdmin=()=>S.cfg.role==='admin';
+function renderRole(){const a=isAdmin(),con=!!(S.cfg.url&&S.cfg.token);
+  document.querySelectorAll('[data-admin]').forEach(x=>x.hidden=!a);
+  $('#adminFields').hidden=con&&!a;
+  sf.url.value=a||!con?S.cfg.url||'':'';sf.token.value=a||!con?S.cfg.token||'':'';sf.name.value=S.cfg.name||'';
+  sf.url.required=sf.token.required=!con||a;
+  $('#roleInfo').innerHTML=!con?'Admin: type the URL and token. Staff: tap <b>Scan setup QR</b> below and scan the admin phone.':a?'This phone is the <b>admin</b> phone: it can print labels and show the setup QR.':
+    'This is a <b>staff</b> phone, connected by the admin. <button type="button" id="becomeAdmin" style="min-height:32px;padding:2px 10px;font-size:13px">Admin login</button>';
+  $('#becomeAdmin')&&($('#becomeAdmin').onclick=()=>{$('#adminFields').hidden=false;sf.url.value=S.cfg.url;sf.token.value='';sf.token.required=true;sf.token.focus();$('#roleInfo').textContent='Type the token to unlock admin on this phone.'});
+  $('#cfgQr').innerHTML=''}
+sf.onsubmit=async e=>{e.preventDefault();
+  const typedTok=sf.token.value.trim(),typedUrl=sf.url.value.trim();
+  if(typedTok){if(S.cfg.token&&typedTok!==S.cfg.token&&S.cfg.role!=='admin'&&typedUrl===S.cfg.url){$('#setMsg').innerHTML='<div class="msg err">Wrong token.</div>';return}
+    S.cfg={url:typedUrl,token:typedTok,name:sf.name.value.trim(),role:'admin'}}
+  else S.cfg={...S.cfg,name:sf.name.value.trim()};
+  ls.set('pro.cfg',S.cfg);renderRole();
   $('#setMsg').innerHTML='<div class="msg">Connecting…</div>';await trySync();
   $('#setMsg').innerHTML=S.err?`<div class="msg err">Could not connect: ${esc(S.err)}. Check the URL and token, and that you are online.</div>`:'<div class="msg ok">Connected. Products, locations and stock downloaded.</div>'};
+renderRole();
 $('#scanCfg').onclick=()=>{tab('scan');startCam()};
-$('#showCfg').onclick=()=>{const b=$('#cfgQr');if(b.innerHTML){b.innerHTML='';return}
+$('#showCfg').onclick=()=>{const b=$('#cfgQr');if(!isAdmin())return;if(b.innerHTML){b.innerHTML='';return}
   if(!S.cfg.url||!S.cfg.token){b.innerHTML='<div class="msg warn">Connect this phone first.</div>';return}
   b.innerHTML=`<div style="background:#fff;padding:10px;display:inline-block;border-radius:8px">${qr('PROCFG:'+JSON.stringify({u:S.cfg.url,t:S.cfg.token}),5)}</div><div class="small">Tap Show setup QR again to hide it.</div>`};
 function renderInfo(){$('#info').innerHTML=`Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
