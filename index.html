@@ -49,7 +49,30 @@ button{font:700 15px system-ui;min-height:44px;padding:10px 16px;border-radius:8
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 5px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--mute)}.n{text-align:right;white-space:nowrap}
 .tag{font:800 12px system-ui;padding:2px 6px;border-radius:4px;color:#fff}.tIN{background:var(--in)}.tOUT{background:var(--out)}.tMOVE{background:var(--mov)}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.stats div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px}.stats b{display:block;font-size:clamp(20px,6vw,30px)}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px;overflow:hidden}.stats b{display:block;font-size:clamp(17px,5.2vw,28px);white-space:nowrap}
+.plan{background:var(--card);border:3px solid var(--ink);border-radius:6px;padding:8px 6px 10px}
+.area{font-weight:800;font-size:13px;text-align:center;letter-spacing:.04em;margin:0 0 6px}
+.racks{display:grid;grid-template-columns:repeat(8,minmax(0,1fr)) minmax(0,1.1fr) repeat(5,minmax(0,1fr));gap:3px;align-items:start}
+.rack{all:unset;cursor:pointer;display:grid;gap:3px;border-radius:5px;padding:2px}
+.rack:focus-visible{outline:3px solid var(--yel)}
+.rack>b{text-align:center;font-size:clamp(12px,3.4vw,17px);line-height:1.2}
+.cell{position:relative;height:clamp(30px,8.5vw,46px);border:1.5px solid var(--ink);border-radius:3px;overflow:hidden;background:var(--bg);display:grid;place-items:center}
+.cell i{position:absolute;inset:auto 0 0 0;background:var(--fill)}
+.cell span{position:relative;font-weight:700;font-size:clamp(8px,2.3vw,14px);letter-spacing:-.03em}
+.cell.hit{box-shadow:inset 0 0 0 3px var(--mov)}.plan.dim .cell:not(.hit){opacity:.3}
+.gate{align-self:stretch;display:grid;place-items:center;text-align:center;font-size:clamp(8px,2.2vw,11px);color:var(--mute);border-top:2px dashed var(--mute);margin-top:clamp(22px,5vw,28px);line-height:1.2}
+.kr{margin-top:10px;border:2px solid var(--ink);border-radius:4px;padding:8px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.kr .ante{font-size:11px;color:var(--mute);border:1.5px solid var(--mute);border-radius:3px;padding:10px 4px;text-align:center}
+.kr .mid{text-align:center}.kr .mid b{display:block;font-size:13px;margin-bottom:6px}
+.kr .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.kr .chips button{min-height:38px;padding:6px 10px;font-size:13px}
+.rkhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.rkhead h2{margin:0;font-size:26px}
+.rkgrid{display:grid;gap:6px;align-items:stretch}
+.rkgrid .lv{font-size:12px;font-weight:700;color:var(--mute);display:grid;align-items:center}
+.rkgrid .hd{text-align:center;font-weight:800}
+.lvl{position:relative;min-height:74px;border:2px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--bg);display:grid;align-content:center;justify-items:center;padding:6px 2px;cursor:pointer;font:inherit;color:inherit}
+.lvl i{position:absolute;inset:auto 0 0 0;background:var(--fill)}.lvl>*:not(i){position:relative}
+.lvl strong{font-size:22px;line-height:1}.lvl small{font-size:12px}
+.lvl.sel{outline:4px solid var(--yel);outline-offset:-2px}.lvl.hit{box-shadow:inset 0 0 0 4px var(--mov)}
 .room{position:relative;border:3px solid var(--ink);border-radius:4px;padding:16px 12px 44px;background:var(--card);display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .pal{border:2px solid var(--ink);border-radius:4px;padding:6px}.pal>b{display:block;margin:0 0 4px 2px}
 .stk{display:grid;grid-template-columns:repeat(auto-fit,minmax(40px,1fr));gap:4px}
@@ -104,11 +127,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 <section id="v-room" hidden>
   <div class="stats" id="stats"></div>
   <label style="margin-bottom:12px">Find product<input id="find" placeholder="e.g. neck bone, liver, meltique"></label>
-  <div class="row" id="zoomBar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap;align-items:center" hidden><span class="small" style="margin-right:auto">CR area · from the Room + Locations tabs</span><button type="button" data-z="-1" aria-label="Zoom out">−</button><button type="button" data-z="1" aria-label="Zoom in">+</button></div>
-  <div class="planWrap" id="planWrap" hidden><svg id="plan"></svg></div>
-  <div class="room" id="room"></div>
-  <div class="row" id="extraLocs" style="margin-top:10px"></div>
-  <div class="card" id="detail" style="margin-top:12px"><span class="small">Tap a stack to see what's inside.</span></div>
+  <div id="ov"></div>
+  <div id="rk" hidden></div>
+  <div class="card" id="detail" style="margin-top:12px"></div>
 </section>
 
 <section id="v-log" hidden>
@@ -443,42 +464,62 @@ $('#mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.mode=b.
 function tab(t){document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x.dataset.t===t));document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!=='v-'+t);if(t!=='scan'&&camOn)stopCam();renderAll()}
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)tab(b.dataset.t)};
 
-/* ---------- cold room map ---------- */
-let zoom=ls.get('pro.zoom',1.5);
+/* ---------- cold room: layout overview -> rack view ---------- */
+const ORDER=['M','L','K','J','I','H','G','F','|','E','D','C','B','A'];
+const LV_ORDER=['A','T','B'];
+let view=null,cellSel=null;
+const kgShort=n=>n>=1000?(n/1000).toLocaleString('en-US',{maximumFractionDigits:1})+' t':Math.round(n).toLocaleString('en-US')+' kg';
 function renderRoom(){
-  const{st}=compute(),q=$('#find').value.trim().toLowerCase(),L=S.master.locations||[],R=S.master.room||{};
-  const all=Object.values(st);
-  $('#stats').innerHTML=`<div>Boxes<b>${all.reduce((a,s)=>a+s.boxes,0).toLocaleString()}</b></div><div>Kg<b>${fmtKg(all.reduce((a,s)=>a+s.kg,0))}</b></div><div>Locations used<b>${Object.keys(st).filter(k=>st[k].boxes>0).length}</b></div>`;
-  const groups={};L.forEach(l=>{const b=base(l.code);(groups[b]=groups[b]||{base:b,codes:[],l}).codes.push(String(l.code))});
-  const tot=g=>g.codes.reduce((a,c)=>{const s=st[c];if(s){a.boxes+=s.boxes;a.kg+=s.kg}return a},{boxes:0,kg:0});
-  const hit=g=>q&&g.codes.some(c=>st[c]&&Object.values(st[c].items).some(i=>i.name.toLowerCase().includes(q)));
-  const G=Object.values(groups),placed=G.filter(g=>g.l.x_cm!==''&&g.l.x_cm!=null&&+g.l.w_cm>0),other=G.filter(g=>!placed.includes(g));
-  const max=Math.max(1,...G.map(g=>tot(g).kg));
-  const plan=+R.width_cm>0&&placed.length;$('#zoomBar').hidden=$('#planWrap').hidden=!plan;$('#room').hidden=true;
-  if(plan){
-    const W=+R.width_cm,D=+R.depth_cm||500,dx=+R.door_x_cm||0,dw=+R.door_w_cm||100,wall=String(R.door_wall||'front').toLowerCase(),pad=30;
-    const px=Math.max(($('#planWrap').clientWidth||360)-2,240)*zoom;
-    const door=wall==='back'?`M${dx} 0 h${dw}`:wall==='left'?`M0 ${dx} v${dw}`:wall==='right'?`M${W} ${dx} v${dw}`:`M${dx} ${D} h${dw}`;
-    const tx=wall==='back'?[dx+dw/2,-10]:wall==='left'?[-10,dx+dw/2]:wall==='right'?[W+10,dx+dw/2]:[dx+dw/2,D+24];
-    const svg=$('#plan');svg.setAttribute('viewBox',`${-pad} ${-pad} ${W+pad*2} ${D+pad*2}`);svg.setAttribute('width',px);svg.setAttribute('height',px*(D+pad*2)/(W+pad*2));
-    svg.className.baseVal=q?'dim':'';
-    const racks={};placed.forEach(g=>{const r=g.l.rack;if(!r)return;const x=+g.l.x_cm,y=+g.l.y_cm;racks[r]=racks[r]||{x,y};racks[r].x=Math.min(racks[r].x,x);racks[r].y=Math.min(racks[r].y,y)});
-    svg.innerHTML=`<rect x="0" y="0" width="${W}" height="${D}" fill="none" stroke="currentColor" stroke-width="5" style="color:var(--ink)"/>
-      <path d="${door}" stroke="var(--yel)" stroke-width="10"/><text x="${tx[0]}" y="${tx[1]}" font-size="18" font-weight="700">Gate CR › KR</text>`+
-      Object.entries(racks).map(([r,p])=>`<text x="${p.x+28}" y="${p.y-10}" font-size="22" font-weight="800">${esc(r)}</text>`).join('')+
-      placed.map(g=>{const t=tot(g),x=+g.l.x_cm,y=+g.l.y_cm,w=+g.l.w_cm,d=+g.l.d_cm,fh=d*t.kg/max,fs=Math.max(10,Math.min(w,d)*.3);
-        return`<g class="s${S.sel===g.base?' sel':''}${hit(g)?' hit':''}" data-l="${esc(g.base)}"><rect class="b" x="${x}" y="${y}" width="${w}" height="${d}" rx="4"/><rect class="f" x="${x}" y="${y+d-fh}" width="${w}" height="${fh}"/>
-          <text x="${x+w/2}" y="${y+fs}" font-size="${fs*.75}" font-weight="700">${esc(g.base)}</text><text x="${x+w/2}" y="${y+d/2+fs*.45}" font-size="${fs*1.1}" font-weight="800">${t.boxes||''}</text></g>`}).join('');
+  const{st}=compute(),q=$('#find').value.trim().toLowerCase(),L=S.master.locations||[];
+  const all=Object.values(st),tb=all.reduce((a,s)=>a+s.boxes,0),tk=all.reduce((a,s)=>a+s.kg,0);
+  $('#stats').innerHTML=`<div>Boxes<b>${tb.toLocaleString('en-US')}</b></div><div>Weight<b>${kgShort(tk)}</b></div><div>Levels used<b>${Object.keys(st).filter(k=>st[k].boxes>0&&LOCS().includes(k)).length}/${L.filter(l=>l.rack).length}</b></div>`;
+  const has=c=>q&&st[c]&&Object.values(st[c].items).some(i=>i.boxes>0&&i.name.toLowerCase().includes(q));
+  const racks={};L.forEach(l=>{if(!l.rack)return;const r=String(l.rack),s=+l.stack;(racks[r]=racks[r]||{});(racks[r][s]=racks[r][s]||[]).push(String(l.code))});
+  const sum=codes=>codes.reduce((a,c)=>{const s=st[c];if(s){a.b+=s.boxes;a.k+=s.kg}return a},{b:0,k:0});
+  const maxStack=Math.max(1,...Object.values(racks).flatMap(r=>Object.values(r).map(c=>sum(c).k)));
+  const extra=L.filter(l=>!l.rack).map(l=>String(l.code));
+  const order=[...ORDER,...Object.keys(racks).filter(r=>!ORDER.includes(r)).sort()];
+  if(!view){
+    $('#rk').hidden=true;$('#ov').hidden=false;
+    $('#ov').innerHTML=`<div class="plan${q?' dim':''}"><div class="area">AREA CR</div><div class="racks">${order.map(r=>{
+      if(r==='|')return'<div class="gate">Gate<br>CR › KR</div>';const R=racks[r];if(!R)return'<div></div>';
+      const stacks=Object.keys(R).map(Number).sort((a,b)=>a-b);
+      return`<button type="button" class="rack" data-r="${esc(r)}" aria-label="Rack ${esc(r)}"><b>${esc(r)}</b>${stacks.map(s=>{const t=sum(R[s]),hit=R[s].some(has);
+        return`<div class="cell${hit?' hit':''}"><i style="height:${Math.round(t.k/maxStack*100)}%"></i><span>${t.b||''}</span></div>`}).join('')}</button>`}).join('')}</div>
+      <div class="kr"><div class="ante">Ante-<br>room 3</div><div class="mid"><b>AREA KR</b><div class="chips">${extra.map(c=>{const t=sum([c]);return`<button type="button" data-l="${esc(c)}" class="${has(c)?'pri':''}">${esc(c)} · ${t.b}</button>`}).join('')}</div></div><div class="ante">Ante-<br>room 4</div></div></div>
+      <p class="small" style="margin:6px 2px 0">Tap a rack to see its stacks and levels. Numbers = boxes; shading = weight.</p>`;
+    $('#detail').innerHTML=q?searchList(st,q):'<span class="small">Tap a rack, or search a product to see where it is.</span>';
+    return;
   }
-  $('#extraLocs').innerHTML=other.map(g=>{const t=tot(g);return`<button type="button" data-l="${esc(g.base)}" class="${S.sel===g.base?'pri':''}">${esc(g.base)} · ${t.boxes}</button>`}).join('');
-  const g=groups[S.sel];
-  if(g){const rows=[];let tb=0,tk=0;
-    g.codes.forEach(c=>{const s=st[c];if(!s)return;tb+=s.boxes;tk+=s.kg;Object.values(s.items).filter(i=>i.boxes>0).sort((a,b)=>(a.oldest||'9').localeCompare(b.oldest||'9')).forEach(i=>rows.push([c,i]))});
-    $('#detail').innerHTML=`<b>${esc(g.base)}</b> <span class="small">${tb} boxes · ${fmtKg(tk)} kg · oldest first per level</span>`+(rows.length?`<div class="scroll"><table style="margin-top:8px"><tr><th>Level</th><th>Product</th><th class="n">Boxes</th><th class="n">Kg</th><th class="n">Packs</th><th>Oldest</th></tr>${rows.map(([c,i])=>`<tr><td>${esc(LVN[c.split('-')[1]]||c)}</td><td>${esc(i.name)}${i.unl?` <span class="small">(${i.unl} unlabelled)</span>`:''}</td><td class="n">${i.boxes}</td><td class="n">${fmtKg(i.kg)}</td><td class="n">${i.packs||''}</td><td>${fmtD(i.oldest)}</td></tr>`).join('')}</table></div>`:'<p class="small">Empty.</p>')}
+  $('#ov').hidden=true;$('#rk').hidden=false;
+  if(view.loc){const c=view.loc,t=sum([c]);
+    $('#rk').innerHTML=`<div class="rkhead"><h2>${esc(c)}</h2><button type="button" id="back">← Back to layout</button></div>`;
+    $('#back').onclick=()=>{view=null;cellSel=null;renderRoom()};$('#detail').innerHTML=levelTable(st,[c]);return}
+  const R=racks[view.rack]||{},stacks=Object.keys(R).map(Number).sort((a,b)=>a-b),t=sum(stacks.flatMap(s=>R[s]));
+  const maxLv=Math.max(1,...stacks.flatMap(s=>R[s].map(c=>st[c]?.kg||0)));
+  const cell=c=>{const s=st[c]||{boxes:0,kg:0};return`<button type="button" class="lvl${cellSel===c?' sel':''}${has(c)?' hit':''}" data-c="${esc(c)}"><i style="height:${Math.round(s.kg/maxLv*100)}%"></i><strong>${s.boxes}</strong><small>${s.boxes?kgShort(s.kg):'empty'}</small></button>`};
+  $('#rk').innerHTML=`<div class="rkhead"><div><h2>Rack ${esc(view.rack)}</h2><span class="small">${t.b} boxes · ${kgShort(t.k)}</span></div><button type="button" id="back">← Back to layout</button></div>
+    <div class="rkgrid" style="grid-template-columns:4.2em repeat(${stacks.length},minmax(0,1fr))"><div></div>${stacks.map(s=>`<div class="hd">${esc(view.rack)}${s}</div>`).join('')}
+    ${LV_ORDER.map(lv=>`<div class="lv">${LVN[lv]}</div>${stacks.map(s=>{const c=`${view.rack}${s}-${lv}`;return R[s].includes(c)?cell(c):'<div></div>'}).join('')}`).join('')}</div>
+    <p class="small" style="margin:8px 0 0">Tap a level to see what's inside.</p>`;
+  $('#back').onclick=()=>{view=null;cellSel=null;renderRoom()};
+  $('#detail').innerHTML=levelTable(st,cellSel?[cellSel]:stacks.flatMap(s=>LV_ORDER.map(lv=>`${view.rack}${s}-${lv}`).filter(c=>R[s].includes(c))),!cellSel);
 }
-$('#plan').addEventListener('click',e=>{const g=e.target.closest('g[data-l]');if(g){S.sel=g.dataset.l;renderRoom()}});
-$('#extraLocs').onclick=e=>{const b=e.target.closest('[data-l]');if(b){S.sel=b.dataset.l;renderRoom()}};
-$('#zoomBar').onclick=e=>{const b=e.target.closest('button[data-z]');if(!b)return;zoom=Math.min(5,Math.max(1,zoom*(b.dataset.z>0?1.5:1/1.5)));ls.set('pro.zoom',zoom);renderRoom()};
+function levelTable(st,codes,group){
+  const rows=[];let tb=0,tk=0;
+  codes.forEach(c=>{const s=st[c];if(!s)return;tb+=s.boxes;tk+=s.kg;Object.values(s.items).filter(i=>i.boxes>0).sort((a,b)=>(a.oldest||'9').localeCompare(b.oldest||'9')).forEach(i=>rows.push([c,i]))});
+  const title=codes.length===1?locName(codes[0]):'Whole rack';
+  return`<b>${esc(title)}</b> <span class="small">${tb} boxes · ${kgShort(tk)} · oldest first</span>`+(rows.length?`<div class="scroll"><table style="margin-top:8px"><tr>${group?'<th>Level</th>':''}<th>Product</th><th class="n">Boxes</th><th class="n">Kg</th><th class="n">Packs</th><th>Oldest</th></tr>${rows.map(([c,i])=>`<tr>${group?`<td>${esc(locName(c))}</td>`:''}<td>${esc(i.name)}${i.unl?` <span class="small">(${i.unl} unlabelled)</span>`:''}</td><td class="n">${i.boxes}</td><td class="n">${fmtKg(i.kg)}</td><td class="n">${i.packs||''}</td><td>${fmtD(i.oldest)}</td></tr>`).join('')}</table></div>`:'<p class="small">Empty.</p>');
+}
+function searchList(st,q){const rows=[];
+  Object.entries(st).forEach(([c,s])=>Object.values(s.items).forEach(i=>{if(i.boxes>0&&i.name.toLowerCase().includes(q))rows.push([c,i])}));
+  rows.sort((a,b)=>(a[1].oldest||'9').localeCompare(b[1].oldest||'9'));
+  const tb=rows.reduce((a,r)=>a+r[1].boxes,0),tk=rows.reduce((a,r)=>a+r[1].kg,0);
+  return`<b>Found in ${rows.length} location${rows.length===1?'':'s'}</b> <span class="small">${tb} boxes · ${kgShort(tk)} · oldest first</span>`+(rows.length?`<div class="scroll"><table style="margin-top:8px"><tr><th>Location</th><th>Product</th><th class="n">Boxes</th><th class="n">Kg</th><th>Oldest</th></tr>${rows.slice(0,80).map(([c,i])=>`<tr><td><button type="button" class="opt" style="margin:0;padding:4px 8px;min-height:32px;width:auto" data-go="${esc(c)}">${esc(locName(c))}</button></td><td>${esc(i.name)}</td><td class="n">${i.boxes}</td><td class="n">${fmtKg(i.kg)}</td><td>${fmtD(i.oldest)}</td></tr>`).join('')}</table></div>`:'')}
+$('#ov').addEventListener('click',e=>{const r=e.target.closest('[data-r]'),l=e.target.closest('[data-l]');if(r){view={rack:r.dataset.r};cellSel=null;renderRoom();scrollTo(0,0)}else if(l){view={loc:l.dataset.l};renderRoom()}});
+$('#rk').addEventListener('click',e=>{const c=e.target.closest('[data-c]');if(c){cellSel=cellSel===c.dataset.c?null:c.dataset.c;renderRoom()}});
+$('#detail').addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(!g)return;const c=g.dataset.go,l=(S.master.locations||[]).find(x=>String(x.code)===c);
+  if(l&&l.rack){view={rack:String(l.rack)};cellSel=c}else view={loc:c};renderRoom();scrollTo(0,0)});
 $('#find').oninput=renderRoom;
 
 /* ---------- log ---------- */
