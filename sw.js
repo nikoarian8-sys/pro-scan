@@ -1,5 +1,5 @@
 // Offline cache for the app itself. Bump VERSION when you upload new app files.
-const VERSION = 'pro-scan-v13';
+const VERSION = 'pro-scan-v14';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'zxing-reader.js', 'zxing_reader.wasm', 'qrcode.js', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
