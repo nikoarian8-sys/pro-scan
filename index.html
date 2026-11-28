@@ -83,6 +83,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .door{position:absolute;right:16px;bottom:8px;font-size:13px;font-weight:700;color:var(--mute);border-top:3px solid var(--ink);width:110px;text-align:right;padding-top:4px}
 .scroll{overflow-x:auto}
 .opt{display:block;width:100%;text-align:left;margin-top:6px;font-weight:400}
+.row .cta{flex:1 1 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:52px;font-size:17px}
 .toast{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:50;min-width:240px;max-width:86vw;border-radius:18px;padding:18px 20px;color:#fff;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35);cursor:pointer}
 .toast.tok{background:#127a46}.toast.tbad{background:#c8371d}.toast .ti{font-size:46px;line-height:1;font-weight:800}.toast .tx{margin-top:8px;font-weight:700;font-size:16px;line-height:1.35}
 @media(prefers-reduced-motion:no-preference){.toast:not([hidden]){animation:pop .18s ease-out}@keyframes pop{from{transform:translate(-50%,-50%) scale(.85);opacity:0}}}
@@ -118,7 +119,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 </style>
 </head>
 <body>
-<header><h1><b>PRO</b>Cold Room <small class="ver">v14 · 28 Nov</small></h1><button id="sync" type="button">…</button></header>
+<header><h1><b>PRO</b>Cold Room <small class="ver">v15 · 28 Nov</small></h1><button id="sync" type="button">…</button></header>
 <nav><div>
 <button data-t="scan" aria-selected="true">Scan</button><button data-t="room">Cold room</button><button data-t="log">Log</button><button data-t="labels" data-lbl>Labels</button><button data-t="set">Settings</button>
 </div></nav>
@@ -127,9 +128,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
   <div class="card">
     <div class="seg" id="mode"><button data-m="IN" aria-pressed="true">IN</button><button data-m="OUT" aria-pressed="false">OUT</button><button data-m="MOVE" aria-pressed="false">MOVE</button></div>
     <div class="row" style="margin-top:10px">
-      <label style="flex:1 1 150px"><span id="locLbl">Location</span><select id="loc"></select></label>
+      <label style="flex:1 1 150px" id="locWrap"><span id="locLbl">Location</span><select id="loc"></select></label>
       <label style="flex:1 1 150px" id="toWrap" hidden>Move to<select id="to"></select></label>
     </div>
+    <div class="small" id="outHint" hidden style="margin-top:8px">Scan the box: its location is taken from stock. Choose the destination on the next screen.</div>
     <div class="small" id="rcvInfo" style="margin-top:8px"></div>
   </div>
   <div class="card">
@@ -356,6 +358,7 @@ function handle(raw){
   const r=parseCode(raw),mode=S.mode,loc=$('#loc').value,to=$('#to').value;
   if(r.type==='cfg'){feedback(true);S.cfg={url:r.url,token:r.token,name:S.cfg.name||'',role:S.cfg.role==='admin'?'admin':r.role};ls.set('pro.cfg',S.cfg);renderRole();tab('set');$('#setMsg').innerHTML='<div class="msg ok">Setup QR read. Type your name below and tap Save &amp; sync.</div>';sf.name.focus();return}
   if(r.type==='loc'){if(!LOCS().includes(r.loc)){feedback(false);return show(`<div class="msg err">Unknown location ${esc(r.loc)}</div>`)}
+    if(mode==='OUT'){feedback(true);return show(`<div class="msg warn">In OUT you don't need a location: scan the box itself.</div>`)}
     (mode==='MOVE'?$('#to'):$('#loc')).value=r.loc;saveLoc();feedback(true);const lh=`<div class="msg ok">${mode==='MOVE'?'Move to':'Location'}: ${esc(locName(r.loc))}</div>`;toast(true,lh);return show(lh)}
   if(r.type==='lot')return lotCard(r,mode,loc,to);
   if(r.type==='sscc'){feedback(false);return show(`<div class="msg warn">That's the shipping code. Aim at the product barcode.</div>`)}
@@ -384,7 +387,7 @@ function receiveCard(r,loc,raw){
             :`<label>Weight (kg)<input id="rKg" type="number" inputmode="decimal" step="0.01" min="0.01" required value="${B&&B.kg_per_box?B.kg_per_box:''}"></label>`}
       <label>Production date<input id="rProd" type="date" value="${esc(pre.prod)}"></label><label>Expiry date<input id="rExp" type="date" value="${esc(pre.exp)}"></label>
       <label>Lot / batch<input id="rLot" value="${esc(pre.lot)}"></label></div>
-      <div class="row" style="margin-top:12px"><button type="button" class="pri" id="rOk" style="flex:2" ${sel?'':'disabled'}>Confirm IN</button><button type="button" id="rX">Cancel</button></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="pri cta" id="rOk" ${sel?'':'disabled'}>Confirm IN</button><button type="button" id="rX">Cancel</button></div>
       <button type="button" id="rLink" style="margin-top:8px;width:100%">This box is already in stock (no label yet)</button></div>`);
     pk.bind();if(!sel)pk.open();else($('#rKg')||$('#rPk')).focus();
     $('#rChg')&&($('#rChg').onclick=()=>pk.open());
@@ -421,10 +424,10 @@ function existingCard(r,b,mode,loc,to){
   const unit=b.packs!=null?'packs':'kg';
   show(`<div class="label"><div class="small">${esc(r.label||r.gtin)} · now @ ${esc(locName(b.loc))}</div><h3>${esc(boxName(b))}</h3>
     <div class="kv"><div><span>In box now</span><b>${qtyTxt(b)}</b></div><div><span>Prod.</span><b>${fmtD(b.prod)}</b></div><div><span>Expiry</span><b>${fmtD(b.exp)}</b></div></div>
-    ${mode==='OUT'?`${destHtml()}<div class="row" style="margin-top:12px"><button type="button" class="pri" id="eAll" style="flex:2">OUT whole box</button><button type="button" id="ePart">Part only</button><button type="button" id="eX">Cancel</button></div>
+    ${mode==='OUT'?`${destHtml()}<div class="row" style="margin-top:12px"><button type="button" class="pri cta" id="eAll">OUT whole box</button><button type="button" id="ePart">Part only</button><button type="button" id="eX">Cancel</button></div>
       <div id="partF" hidden style="margin-top:10px"><label>${unit==='packs'?'Packs taken out':'Kg taken out'}<input id="eQty" type="number" inputmode="decimal" step="${unit==='packs'?1:0.01}" min="0"></label>
       <label style="margin-top:8px">Reason (optional)<input id="eNote" placeholder="e.g. sample, cutting"></label><button type="button" class="pri" id="ePOk" style="margin-top:10px;width:100%">Confirm part OUT</button></div>`
-     :`<div class="row" style="margin-top:12px"><button type="button" class="pri" id="eMv" style="flex:2">Confirm MOVE ${where('MOVE',loc,to,b.loc)}</button><button type="button" id="eX">Cancel</button></div>`}</div>`);
+     :`<div class="row" style="margin-top:12px"><button type="button" class="pri cta" id="eMv">Confirm MOVE ${where('MOVE',loc,to,b.loc)}</button><button type="button" id="eX">Cancel</button></div>`}</div>`);
   $('#eX').onclick=()=>done();
   const base0={kind:'box',key:b.key,gtin:b.gtin||'',sku:b.sku||skuOf(b.gtin),serial:b.serial||r.label||'',lot:b.lot||''};
   if(mode==='MOVE'){if(b.loc===to){$('#eMv').disabled=true;$('#eMv').textContent='Already in '+locName(to)}
@@ -451,24 +454,27 @@ function gs1NewCard(r,mode,loc,to,raw){
     <div class="kv" style="margin-top:8px"><div><span>Net weight</span><b>${r.kg!=null?fmtKg(r.kg)+' kg':'–'}</b></div><div><span>Pack / prod.</span><b>${fmtD(r.prod)}</b></div>
     <div><span>Expiry</span><b>${fmtD(r.exp)}</b></div><div><span>${r.serial?'Serial':'Lot'}</span><b>${esc(r.serial||r.lot||'–')}</b></div><div><span>GTIN</span><b style="font-size:14px">${esc(r.gtin)}</b></div></div>
     ${pk.html}${warn?`<div class="msg warn">${esc(warn)}</div>`:''}${mode==='OUT'?destHtml():''}
-    <div class="row" style="margin-top:12px"><button type="button" class="pri" id="gOk" style="flex:2" ${sel?'':'disabled'}>Confirm ${mode} ${mode==='MOVE'?'→ '+esc(locName(to)):'@ '+esc(locName(loc))}</button><button type="button" id="gChg" ${sel?'':'hidden'}>Change product</button><button type="button" id="gX">Cancel</button></div></div>`);
+    <div class="row" style="margin-top:12px"><button type="button" class="pri cta" id="gOk" ${sel?'':'disabled'}>Confirm ${mode}${mode==='MOVE'?' → '+esc(locName(to)):mode==='IN'?' @ '+esc(locName(loc)):''}</button><button type="button" id="gChg" ${sel?'':'hidden'}>Change product</button><button type="button" id="gX">Cancel</button></div></div>`);
   pk.bind();if(!sel)pk.open();else $('#gOk').focus();
   $('#gX').onclick=()=>done();$('#gChg').onclick=()=>pk.open();
   if(mode==='OUT')bindDest(()=>{$('#gOk').disabled=!sel||!destOk()});
   $('#gOk').onclick=()=>{if(!sel||(mode==='OUT'&&!destOk()))return;
     if(sel!==mapped){S.pq.push({gtin:r.gtin,sku:sel});ls.set('pro.pq',S.pq);const P0=S.master.products.find(x=>String(x.gtin)===String(r.gtin));if(P0){P0.sku=sel;P0.name=skuName(sel)}else S.master.products.push({gtin:r.gtin,sku:sel,name:skuName(sel)});ls.set('pro.master',S.master)}
-    addMove({mode,kind:'box',key,loc:mode==='MOVE'?'':loc,to:mode==='MOVE'?to:'',gtin:r.gtin,sku:sel,kg:r.kg??null,prod:r.prod,exp:r.exp,serial:r.serial||'',lot:r.lot||'',raw:String(raw).replace(/\x1d/g,'|').slice(0,200),...(mode==='OUT'?destFields():{})});
-    feedback(true);renderAll();done(`<div class="msg ok">Saved: ${mode} · ${esc(skuName(sel))} · ${r.kg!=null?fmtKg(r.kg)+' kg':''} ${mode==='MOVE'?'→ '+esc(locName(to)):'@ '+esc(locName(loc))}${sel!==mapped?'<br><span class="small">Product link for this barcode updated for next time.</span>':''}</div>`)};
+    addMove({mode,kind:'box',key,loc:mode==='IN'?loc:'',to:mode==='MOVE'?to:'',gtin:r.gtin,sku:sel,kg:r.kg??null,prod:r.prod,exp:r.exp,serial:r.serial||'',lot:r.lot||'',raw:String(raw).replace(/\x1d/g,'|').slice(0,200),...(mode==='OUT'?destFields():{})});
+    feedback(true);renderAll();done(`<div class="msg ok">Saved: ${mode} · ${esc(skuName(sel))} · ${r.kg!=null?fmtKg(r.kg)+' kg':''} ${mode==='MOVE'?'→ '+esc(locName(to)):mode==='OUT'?'→ '+esc(dest.d):'@ '+esc(locName(loc))}${sel!==mapped?'<br><span class="small">Product link for this barcode updated for next time.</span>':''}</div>`)};
 }
 
 /* batch cards (optional, batch-level items) */
-function lotCard(r,mode,loc,to){const L=lotMap()[r.id];if(!L){feedback(false);return show(`<div class="msg err">Batch ${esc(r.id)} not found. Add it to the Lots tab and sync.</div>`)}
-  const have=compute().lotq.get(r.id+'|'+loc)||0;busy=true;feedback(true);
+function lotCard(r,mode,loc,to){/* loc may change for OUT */const L=lotMap()[r.id];if(!L){feedback(false);return show(`<div class="msg err">Batch ${esc(r.id)} not found. Add it to the Lots tab and sync.</div>`)}
+  const lq=compute().lotq,here=[...lq].filter(([k,n])=>k.startsWith(r.id+'|')&&n>0).map(([k,n])=>[k.split('|')[1],n]);
+  if(mode==='OUT'){if(!here.length){feedback(false);return show(`<div class="msg err">${esc(lotName(L))}: no boxes of this batch recorded in stock.</div>`)}loc=here.some(x=>x[0]===loc)?loc:here[0][0]}
+  const have=lq.get(r.id+'|'+loc)||0;busy=true;feedback(true);
   show(`<div class="label"><h3>${esc(lotName(L))}</h3><div class="kv"><div><span>Batch</span><b>${esc(L.batch)}</b></div><div><span>Kg / box</span><b>${fmtKg(+L.kg_per_box)}</b></div><div><span>Now here</span><b>${have} boxes</b></div></div>
-    ${mode==='OUT'?destHtml():''}<div class="row" style="margin-top:10px"><label style="flex:1 1 120px">Boxes<input id="qty" type="number" min="1" inputmode="numeric" value="1"></label><button class="pri" id="qOk">Save ${mode}</button><button type="button" id="qX">Cancel</button></div></div>`);
+    ${mode==='OUT'&&here.length>1?`<label style="margin-top:8px">Take from<select id="qLoc">${here.map(([c,n])=>`<option value="${esc(c)}" ${c===loc?'selected':''}>${esc(locName(c))} · ${n} boxes</option>`).join('')}</select></label>`:''}
+    ${mode==='OUT'?destHtml():''}<div class="row" style="margin-top:10px"><label style="flex:1 1 120px">Boxes<input id="qty" type="number" min="1" inputmode="numeric" value="1"></label><button class="pri cta" id="qOk">Save ${mode}</button><button type="button" id="qX">Cancel</button></div></div>`);
   $('#qty').select();$('#qX').onclick=()=>done();
   if(mode==='OUT')bindDest(()=>{$('#qOk').disabled=!destOk()});
-  $('#qOk').onclick=()=>{const n=+$('#qty').value;if(!(n>0)||(mode==='OUT'&&!destOk()))return;addMove({mode,kind:'lot',key:r.id,loc,to:mode==='MOVE'?to:'',boxes:n,...(mode==='OUT'?destFields():{})});renderAll();done(`<div class="msg ok">Saved: ${mode} ${n} × ${esc(lotName(L))}</div>`)}}
+  $('#qOk').onclick=()=>{if($('#qLoc'))loc=$('#qLoc').value;const n=+$('#qty').value;if(!(n>0)||(mode==='OUT'&&!destOk()))return;addMove({mode,kind:'lot',key:r.id,loc,to:mode==='MOVE'?to:'',boxes:n,...(mode==='OUT'?destFields():{})});renderAll();done(`<div class="msg ok">Saved: ${mode} ${n} × ${esc(lotName(L))}</div>`)}}
 
 $('#scanForm').onsubmit=e=>{e.preventDefault();const v=$('#code').value;$('#code').value='';if(v.trim())handle(v)};
 $('#undo').onclick=()=>{const m=S.session[0];if(!m)return;const i=S.queue.findIndex(q=>q.id===m.id);
@@ -535,7 +541,7 @@ function fillLocs(){const L=S.master.locations||[],racks=[...new Set(L.map(l=>l.
   $('#lblRack').innerHTML='<option value="">All racks</option>'+racks.filter(r=>r!=='Other').map(r=>`<option>${esc(r)}</option>`).join('')}
 function saveLoc(){ls.set('pro.loc',$('#loc').value);ls.set('pro.to',$('#to').value)}
 $('#loc').onchange=$('#to').onchange=saveLoc;
-$('#mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#toWrap').hidden=S.mode!=='MOVE';$('#locLbl').textContent=S.mode==='MOVE'?'From (batch cards only)':'Location';renderRcv()};
+$('#mode').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#toWrap').hidden=S.mode!=='MOVE';$('#locWrap').hidden=S.mode==='OUT';$('#outHint').hidden=S.mode!=='OUT';$('#locLbl').textContent=S.mode==='MOVE'?'From (batch cards only)':'Location';renderRcv()};
 function tab(t){document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x.dataset.t===t));document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!=='v-'+t);if(t!=='scan'&&camOn)stopCam();renderAll()}
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)tab(b.dataset.t)};
 
@@ -765,7 +771,7 @@ $('#showCfg').onclick=()=>{const b=$('#cfgQr');if(!isAdmin())return;if(b.innerHT
   if(!S.cfg.url||!S.cfg.token){b.innerHTML='<div class="msg warn">Connect this phone first.</div>';return}
   const rl=$('#cfgRole').value;b.innerHTML=`<div style="background:#fff;padding:10px;display:inline-block;border-radius:8px">${qr('PROCFG:'+JSON.stringify({u:S.cfg.url,t:S.cfg.token,r:rl}),5)}</div><div class="small"><b>${rl==='sub'?'Sub-admin':'Staff'}</b> setup QR. Tap Show setup QR again to hide it.</div>`};
 $('#cfgRole').onchange=()=>{$('#cfgQr').innerHTML=''};
-function renderInfo(){$('#info').innerHTML=`<b>App version: v14 · 28 Nov</b><br>Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
+function renderInfo(){$('#info').innerHTML=`<b>App version: v15 · 28 Nov</b><br>Waiting to sync: ${S.queue.length} scans, ${S.pq.length} product links<br>Products: ${(S.master.items||[]).length} SKUs · Locations: ${LOCS().length} · Movements: ${S.server.length}<br>${'serviceWorker' in navigator?'Offline mode: ready':'Offline mode not supported in this browser'}`}
 
 function renderAll(){renderRoom();renderLog();renderBatches();renderTally();renderRecent();renderInfo();renderSync();renderRcv()}
 fillLocs();renderAll();
